@@ -1,8 +1,9 @@
+# refresh
 import asyncio
 import discord
 import os
 import string
-from discord.ext import commands  # Impor fungsi gen_pass
+from discord.ext import commands, tasks  # Tambah tasks
 import random  # Untuk fitur tambahan, jika diperlukan
 import requests
 from bs4 import BeautifulSoup
@@ -11,6 +12,7 @@ import time
 import datetime
 import socket
 from urllib.parse import urljoin
+from discord import ui
 
 try:
     import certifi
@@ -18,7 +20,6 @@ try:
     _HTTP_VERIFY = certifi.where()
 except ImportError:
     _HTTP_VERIFY = True
-
 
 def http_get(url, **kwargs):
     """GET dengan CA bundle certifi (membantu SSL di Windows); jangan blokir event loop dari coroutine."""
@@ -31,7 +32,7 @@ def http_get(url, **kwargs):
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='$', intents=intents)
+bot = commands.Bot(command_prefix='$', intents=intents, case_insensitive=True)
 
 #fitur **BETA** WEB SCRAPING
 def ambil_quotes_dari_web():
@@ -317,10 +318,90 @@ def ambil_badge(poin):
             break
     return badge
 
+# Scheduled Task untuk Auto-Scraping
+@tasks.loop(hours=12)  # Jalankan setiap 12 jam
+async def auto_scraping_buku():
+    print("🔄 Memulai auto-scraping buku...")
+    try:
+        # Ambil lebih banyak buku untuk memastikan data baru (scrape 50, ambil 25 yang baru)
+        buku_baru_list = await asyncio.to_thread(ambil_banyak_buku, 50)
+        
+        if not buku_baru_list:
+            print("❌ Auto-scraping gagal: Tidak ada data baru.")
+            return
+
+        data_lama = []
+        if os.path.exists(CACHE_FILE):
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                try:
+                    data_lama = json.load(f)
+                except:
+                    data_lama = []
+
+        judul_ada = {b["judul"] for b in data_lama}  # Gunakan set untuk cek cepat
+        buku_baru_unik = [b for b in buku_baru_list if b["judul"] not in judul_ada][:25]  # Ambil maksimal 25 yang baru
+        
+        if not buku_baru_unik:
+            print("ℹ️ Auto-scraping: Semua buku yang di-scrape sudah ada di database. Tidak ada penambahan.")
+            return
+
+        # Tambahkan buku baru ke data_lama
+        data_lama.extend(buku_baru_unik)
+        buku_ditambahkan = len(buku_baru_unik)
+        
+        if len(data_lama) > 500:
+            data_lama = data_lama[-500:]  # Hapus yang lama jika lebih dari 500
+            print("🧹 Membersihkan cache: Menghapus data lama agar file tidak terlalu besar.")
+
+        with open(CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data_lama, f, indent=4, ensure_ascii=False)
+
+        print(f"✅ Auto-scraping selesai: Ditambahkan {buku_ditambahkan} buku baru. Total: {len(data_lama)}")
+
+        # --- DISINI TEMPAT LAPORAN KE DISCORD ---
+        # Ganti angka di bawah dengan ID Channel Discord kamu (tanpa tanda kutip)
+        ID_CHANNEL_LOG = 123456789012345678 
+        channel = bot.get_channel(ID_CHANNEL_LOG)
+        
+        if channel:
+            await channel.send(
+                f"🤖 **Laporan Auto-Scraping**\n"
+                f"✅ Berhasil menambahkan: **{buku_ditambahkan}** buku baru (hanya data unik).\n"
+                f"📚 Total koleksi di database: **{len(data_lama)}** buku."
+            )
+        # ---------------------------------------
+        
+    except Exception as e:
+        print(f"❌ Error auto-scraping: {e}")
+        
 # Bot Event
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
+    # Mulai task auto-scraping saat bot ready
+    if not auto_scraping_buku.is_running():
+        auto_scraping_buku.start()
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"⚠️ Parameter kurang: {error}")
+        return
+    if isinstance(error, commands.BadArgument):
+        await ctx.send(f"⚠️ Tipe parameter salah: {error}")
+        return
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("🚫 Kamu tidak punya izin untuk menjalankan perintah ini.")
+        return
+    if isinstance(error, commands.NotOwner):
+        await ctx.send("⛔ Perintah ini khusus untuk pemilik bot.")
+        return
+
+    # Log error ke console supaya bisa dilihat di terminal
+    print(f"[ERROR] Command '{ctx.command}' gagal: {error}")
+    await ctx.send(f"❌ Terjadi kesalahan saat mengeksekusi perintah: {error}")
 
 @bot.event
 async def on_message(message):
@@ -392,7 +473,8 @@ async def FungsiScraping(ctx):
 1. `$Quotes` - Mengambil dan menampilkan kata-kata mutiara dari website.
 2. `$Books` - Mencari rekomendasi buku dari website Books to Scrape (dengan cooldown 30 menit).
 3. `$BookDescription` - Buku acak **cepat** dari website Books to Scrape dengan deskripsi singkat.
-4. `$WebScraping` - Menjelaskan apa itu web scraping dan bagaimana fitur ini bekerja di bot.
+4. `$FindBooks <keyword>` - Cari buku dari database lokal berdasarkan keyword (judul/deskripsi).
+5. `$WebScraping` - Menjelaskan apa itu web scraping dan bagaimana fitur ini bekerja di bot.
 """
 )
 
@@ -831,7 +913,7 @@ async def BooksAdmin(ctx):
 
 # Pesan otomatis kalau ada user biasa (bukan admin) yang sotoy mau pake perintah ini
 @BooksAdmin.error
-async def admin_error(ctx, error):
+async def books_admin_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("⛔ **Akses Ditolak!** Perintah ini hanya untuk developer bot.")
 
@@ -874,6 +956,102 @@ async def BookDescription(ctx):
     msg += f"🔗 **Link Lengkap:** <{url}>\n"
     msg += f"✨ *Perpustakaan lokal: **{len(data_buku_cache)}** judul.*"
     await ctx.send(msg)
+
+class BookSelect(ui.Select):
+    def __init__(self, books, ctx):
+        self.books = books
+        self.ctx = ctx
+        options = []
+        for i, book in enumerate(books[:25]):  # Limit to 25 options for Discord
+            judul = book.get("judul", "Tanpa Judul")[:100]  # Truncate title
+            option = ui.SelectOption(label=f"{i+1}. {judul}", value=str(i))
+            options.append(option)
+        super().__init__(placeholder="Pilih buku untuk detail...", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        index = int(self.values[0])
+        book = self.books[index]
+        judul = book.get("judul", "Tanpa Judul")
+        harga = book.get("harga", "N/A")
+        sinopsis = book.get("deskripsi", "Tidak ada sinopsis.")
+        url = book.get("url", "https://books.toscrape.com/")
+        if len(sinopsis) > 500:
+            sinopsis = sinopsis[:500] + "..."
+        msg = f"📖 **Detail Buku** 📖\n\n"
+        msg += f"**Judul:** {judul}\n"
+        msg += f"**Harga:** {harga}\n"
+        msg += f"**Sinopsis:**\n> {sinopsis}\n\n"
+        msg += f"🔗 **Link Lengkap:** <{url}>"
+        await interaction.response.send_message(msg, ephemeral=True)
+
+class BookView(ui.View):
+    def __init__(self, books, ctx):
+        super().__init__(timeout=300)  # 5 minutes
+        self.add_item(BookSelect(books, ctx))
+
+@bot.command()
+async def FindBooks(ctx, *, keyword: str):
+    """Cari buku berdasarkan keyword di judul atau deskripsi."""
+    if not keyword.strip():
+        await ctx.send("⚠️ Masukkan keyword untuk pencarian!")
+        return
+
+    data_buku_cache = []
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            try:
+                data_buku_cache = json.load(f)
+            except json.JSONDecodeError:
+                data_buku_cache = []
+
+    if not data_buku_cache:
+        await ctx.send("📚 **Perpustakaan lokal masih kosong.**\nPemilik bot bisa mengisi dengan `$TrueAdminBookDescription <jumlah>`.")
+        return
+
+    keyword_lower = keyword.lower()
+    hasil_cari = []
+    for book in data_buku_cache:
+        judul = book.get("judul", "").lower()
+        deskripsi = book.get("deskripsi", "").lower()
+        if keyword_lower in judul or keyword_lower in deskripsi:
+            hasil_cari.append(book)
+
+    if not hasil_cari:
+        await ctx.send(f"❌ Tidak ada buku yang cocok dengan keyword **'{keyword}'**.")
+        return
+
+    jumlah_hasil = len(hasil_cari)
+    max_tampil = min(jumlah_hasil, 10)  # Tampilkan maksimal 10 buku
+    msg = f"📚 **Hasil Pencarian untuk '{keyword}'** 📚\n\n"
+    for i, book in enumerate(hasil_cari[:max_tampil], 1):
+        judul = book.get("judul", "Tanpa Judul")
+        msg += f"{i}. **{judul}**\n"
+    if jumlah_hasil > max_tampil:
+        msg += f"\n... dan {jumlah_hasil - max_tampil} buku lainnya (hanya 10 pertama yang ditampilkan)."
+    msg += f"\n\n✨ Ditemukan **{jumlah_hasil}** buku. Balas dengan nomor (1-{max_tampil}) untuk detail buku!"
+    sent_msg = await ctx.send(msg)
+
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel and m.content.isdigit() and 1 <= int(m.content) <= max_tampil
+
+    try:
+        reply = await bot.wait_for('message', check=check, timeout=60.0)
+        index = int(reply.content) - 1
+        book = hasil_cari[index]
+        judul = book.get("judul", "Tanpa Judul")
+        harga = book.get("harga", "N/A")
+        sinopsis = book.get("deskripsi", "Tidak ada sinopsis.")
+        url = book.get("url", "https://books.toscrape.com/")
+        if len(sinopsis) > 500:
+            sinopsis = sinopsis[:500] + "..."
+        detail_msg = f"📖 **Detail Buku** 📖\n\n"
+        detail_msg += f"**Judul:** {judul}\n"
+        detail_msg += f"**Harga:** {harga}\n"
+        detail_msg += f"**Sinopsis:**\n> {sinopsis}\n\n"
+        detail_msg += f"🔗 **Link Lengkap:** <{url}>"
+        await ctx.send(detail_msg)
+    except asyncio.TimeoutError:
+        await ctx.send("⏳ Waktu habis. Gunakan `$FindBooks <keyword>` lagi jika perlu.")
 
 @bot.command()
 @commands.is_owner()
@@ -926,7 +1104,7 @@ async def TrueAdminBookDescription(ctx, jumlah: int = 25):
 
 # Pesan Error jika yang memanggil bukan Admin
 @TrueAdminBookDescription.error
-async def admin_error(ctx, error):
+async def true_admin_book_description_error(ctx, error):
     if isinstance(error, commands.NotOwner):
         await ctx.send("⛔ **Akses Ditolak!** Perintah ini hanya bisa digunakan oleh Pengembang Bot (True_Admin).")
 
@@ -961,6 +1139,7 @@ def catat_log_nyala():
     with open("bot_history.txt", "a") as f:
         f.write(f"Bot dinyalakan pada: {waktu_sekarang}\n")
 
-# Panggil sebelum bot.run
-catat_log_nyala()
-bot.run(TOKEN)
+if __name__ == "__main__":
+    cek_dns_discord()
+    catat_log_nyala()
+    bot.run(TOKEN)
