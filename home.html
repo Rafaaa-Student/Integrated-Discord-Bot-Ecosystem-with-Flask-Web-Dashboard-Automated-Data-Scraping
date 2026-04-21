@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Bot Raffasya VII{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h1>🌍 Selamat Datang di Dashboard Bot Raffasya VII</h1>
+            </div>
+            <div class="card-body">
+                <p>Bot Discord interaktif dengan fitur aksi hijau dan web scraping buku. Dibuat oleh anak kelas 7 SMP! 🚀</p>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-white bg-success">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Users</h5>
+                                <p class="card-text">{{ total_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-info">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Poin Hijau</h5>
+                                <p class="card-text">{{ total_poin }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Books</h5>
+                                <p class="card-text">{{ total_books }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
