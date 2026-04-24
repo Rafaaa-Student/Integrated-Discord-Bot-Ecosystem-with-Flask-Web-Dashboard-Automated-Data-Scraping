@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Function - Bot RF' VII{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h1>🌍 Selamat Datang di Dashboard Bot RF' VII</h1>
+            </div>
+            <div class="card-body">
+                <p>Bot Discord interaktif dengan fitur aksi hijau dan web scraping buku. Dibuat oleh anak kelas 7 SMP! 🚀</p>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-white bg-success">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Users</h5>
+                                <p class="card-text">{{ total_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-info">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Poin Hijau</h5>
+                                <p class="card-text">{{ total_poin }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Books</h5>
+                                <p class="card-text">{{ total_books }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Grafik Statistik -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>📊 Statistik Visual</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="statsChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Web-to-Bot Command -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>🤖 Kirim Pesan ke Bot Discord</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="sendMessageForm">
+                                    <div class="mb-3">
+                                        <label for="channel_id" class="form-label">Channel ID Discord</label>
+                                        <input type="text" class="form-control" id="channel_id" name="channel_id" placeholder="Masukkan ID Channel Discord" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="message" class="form-label">Pesan</label>
+                                        <textarea class="form-control" id="message" name="message" rows="3" placeholder="Masukkan pesan yang akan dikirim bot" required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Kirim ke Bot</button>
+                                </form>
+                                <div id="responseMessage" class="mt-3" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Admin Controls -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>📚 Trigger Scraping Buku</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="scrapingForm">
+                                    <div class="mb-3">
+                                        <label for="jumlah" class="form-label">Jumlah Buku (1-100)</label>
+                                        <input type="number" class="form-control" id="jumlah" name="jumlah" min="1" max="100" value="10" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-success">Scrape Buku</button>
+                                </form>
+                                <div id="scrapingResponse" class="mt-3" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>🎉 Trigger Event Eksklusif</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Buat event baru tanpa mengirim pesan ke Discord.</p>
+                                <button id="triggerEventBtn" class="btn btn-warning">Buat Event</button>
+                                <div id="eventResponse" class="mt-3" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('statsChart');
+        if (!ctx) {
+            console.error('Canvas element not found');
+            return;
+        }
+        const chartCtx = ctx.getContext('2d');
+        const statsChart = new Chart(chartCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Total Users', 'Total Poin Hijau', 'Total Books'],
+                datasets: [{
+                    label: 'Statistik',
+                    data: [Number("{{ total_users }}"), Number("{{ total_poin }}"), Number("{{ total_books }}")],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.6)',  // Hijau untuk Users
+                        'rgba(23, 162, 184, 0.6)', // Biru untuk Poin
+                        'rgba(255, 193, 7, 0.6)'    // Kuning untuk Books
+                    ],
+                    borderColor: [
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(23, 162, 184, 1)',
+                        'rgba(255, 193, 7, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        console.log('Chart created successfully');
+
+        // Handle form submission for sending message to bot
+        const form = document.getElementById('sendMessageForm');
+        const responseDiv = document.getElementById('responseMessage');
+        
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const data = {
+                channel_id: formData.get('channel_id'),
+                message: formData.get('message')
+            };
+            
+            fetch('/send_to_bot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                responseDiv.style.display = 'block';
+                if (data.status) {
+                    responseDiv.className = 'alert alert-success';
+                    responseDiv.textContent = data.status;
+                } else {
+                    responseDiv.className = 'alert alert-danger';
+                    responseDiv.textContent = data.error;
+                }
+            })
+            .catch(error => {
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'alert alert-danger';
+                responseDiv.textContent = 'Error: ' + error.message;
+            });
+        });
+
+        // Handle scraping form
+        const scrapingForm = document.getElementById('scrapingForm');
+        const scrapingResponse = document.getElementById('scrapingResponse');
+        
+        scrapingForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(scrapingForm);
+            const data = {
+                jumlah: parseInt(formData.get('jumlah'))
+            };
+            
+            scrapingResponse.style.display = 'block';
+            scrapingResponse.className = 'alert alert-info';
+            scrapingResponse.textContent = 'Sedang scraping... Mohon tunggu.';
+            
+            fetch('/trigger_scraping', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                scrapingResponse.className = data.status ? 'alert alert-success' : 'alert alert-danger';
+                scrapingResponse.textContent = data.status || data.error;
+            })
+            .catch(error => {
+                scrapingResponse.className = 'alert alert-danger';
+                scrapingResponse.textContent = 'Error: ' + error.message;
+            });
+        });
+
+        // Handle trigger event button
+        const triggerEventBtn = document.getElementById('triggerEventBtn');
+        const eventResponse = document.getElementById('eventResponse');
+        
+        triggerEventBtn.addEventListener('click', function() {
+            eventResponse.style.display = 'block';
+            eventResponse.className = 'alert alert-info';
+            eventResponse.textContent = 'Membuat event...';
+            
+            fetch('/trigger_event', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                eventResponse.className = data.status ? 'alert alert-success' : 'alert alert-danger';
+                eventResponse.textContent = data.status || data.error;
+            })
+            .catch(error => {
+                eventResponse.className = 'alert alert-danger';
+                eventResponse.textContent = 'Error: ' + error.message;
+            });
+        });
+    });
+</script>
+{% endblock %}
