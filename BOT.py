@@ -15,6 +15,12 @@ from urllib.parse import urljoin
 from discord import ui
 import aiohttp
 from aiohttp import web
+from Brain import check_image
+from dotenv import load_dotenv
+from database import add_book, get_books, search_books, book_exists, get_random_book
+
+# Load environment variables from .env file
+load_dotenv()
 
 try:
     import certifi
@@ -197,16 +203,6 @@ def scrape_buku_baru(jumlah=10):
     pages_scraped = 0
     listing_url = url_base
 
-    # Muat data lama untuk cek judul yang sudah ada
-    data_lama = []
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            try:
-                data_lama = json.load(f)
-            except:
-                data_lama = []
-    judul_ada = {b["judul"] for b in data_lama}
-
     try:
         while len(hasil_baru) < jumlah and pages_scraped < max_pages:
             pages_scraped += 1
@@ -245,8 +241,8 @@ def scrape_buku_baru(jumlah=10):
                 
                 judul = h1.text.strip()
                 
-                # Cek apakah judul sudah ada di database
-                if judul in judul_ada:
+                # Cek apakah judul sudah ada di database SQLite
+                if book_exists(judul):
                     continue  # Skip buku yang sudah ada
                 
                 # Jika belum ada, scrape detail lengkap
@@ -262,7 +258,6 @@ def scrape_buku_baru(jumlah=10):
                     "url": link_lengkap,
                 }
                 hasil_baru.append(buku_baru)
-                judul_ada.add(judul)  # Tambahkan ke set agar tidak duplikat dalam sesi ini
                 time.sleep(0.5)  # Delay antar buku
 
             # Cari tombol "Next" untuk pindah halaman
@@ -421,27 +416,13 @@ async def auto_scraping_buku():
             print("ℹ️ Auto-scraping: Semua buku yang di-scrape sudah ada di database atau tidak ada data baru.")
             return
 
-        # Muat data lama
-        data_lama = []
-        if os.path.exists(CACHE_FILE):
-            with open(CACHE_FILE, "r", encoding="utf-8") as f:
-                try:
-                    data_lama = json.load(f)
-                except:
-                    data_lama = []
+        # Simpan buku baru ke SQLite
+        buku_ditambahkan = 0
+        for buku in buku_baru_list:
+            add_book(buku["judul"], buku["harga"], buku["deskripsi"], buku["url"])
+            buku_ditambahkan += 1
 
-        # Tambahkan buku baru ke data_lama
-        data_lama.extend(buku_baru_list)
-        buku_ditambahkan = len(buku_baru_list)
-        
-        if len(data_lama) > 500:
-            data_lama = data_lama[-500:]  # Hapus yang lama jika lebih dari 500
-            print("🧹 Membersihkan cache: Menghapus data lama agar file tidak terlalu besar.")
-
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data_lama, f, indent=4, ensure_ascii=False)
-
-        print(f"✅ Auto-scraping selesai: Ditambahkan {buku_ditambahkan} buku baru. Total: {len(data_lama)}")
+        print(f"✅ Auto-scraping selesai: Ditambahkan {buku_ditambahkan} buku baru ke SQLite.")
 
         # --- DISINI TEMPAT LAPORAN KE DISCORD ---
         # Ganti angka di bawah dengan ID Channel Discord kamu (tanpa tanda kutip)
@@ -452,7 +433,7 @@ async def auto_scraping_buku():
             await channel.send(
                 f"🤖 **Laporan Auto-Scraping**\n"
                 f"✅ Berhasil menambahkan: **{buku_ditambahkan}** buku baru (hanya data unik).\n"
-                f"📚 Total koleksi di database: **{len(data_lama)}** buku."
+                f"📚 Total koleksi di database: **{buku_ditambahkan}** buku."
             )
         # ---------------------------------------
         
@@ -498,29 +479,19 @@ async def start_api_server():
             if jumlah < 1 or jumlah > 100:
                 return web.json_response({'error': 'Jumlah harus antara 1-100'}, status=400)
             
-            # Jalankan scraping di background
-            buku_baru_list = await asyncio.to_thread(ambil_banyak_buku, jumlah)
+            # Jalankan scraping di background dengan cek duplikat
+            buku_baru_list = await asyncio.to_thread(scrape_buku_baru, jumlah)
             
             if not buku_baru_list:
                 return web.json_response({'error': 'Gagal scraping'}, status=500)
             
-            # Update database
-            data_lama = []
-            if os.path.exists(CACHE_FILE):
-                with open(CACHE_FILE, "r", encoding="utf-8") as f:
-                    try:
-                        data_lama = json.load(f)
-                    except:
-                        data_lama = []
+            # Simpan buku baru ke SQLite
+            buku_ditambahkan = 0
+            for buku in buku_baru_list:
+                add_book(buku["judul"], buku["harga"], buku["deskripsi"], buku["url"])
+                buku_ditambahkan += 1
             
-            data_lama.extend(buku_baru_list)
-            if len(data_lama) > 500:
-                data_lama = data_lama[-500:]
-            
-            with open(CACHE_FILE, "w", encoding="utf-8") as f:
-                json.dump(data_lama, f, indent=4, ensure_ascii=False)
-            
-            return web.json_response({'status': f'Berhasil tambah {len(buku_baru_list)} buku'})
+            return web.json_response({'status': f'Berhasil tambah {buku_ditambahkan} buku ke SQLite'})
         except Exception as e:
             print(f"Error triggering scraping: {e}")
             return web.json_response({'error': str(e)}, status=500)
@@ -624,6 +595,7 @@ async def FungsiHijau(ctx):
 11. `$Kategori` - Melihat isi kategori sampah.
 12. `$Tambah_Kategori <kategori> <nama_sampah>` - Menambahkan sampah baru ke kategori.
 13. `$Hijau` - Menjelaskan apa itu fitur aksi hijau dan bagaimana cara kerjanya di bot.
+14. `$Scan` - Menganalisis gambar sampah dan memberikan rekomendasi kategori.
 
 📝 Catatan:
 - Untuk `$Tambah_Kategori`, contoh: `$Tambah_Kategori organik pisang` → Menambahkan "pisang" ke kategori "organik".
@@ -714,7 +686,7 @@ async def Website(ctx):
 
 @bot.command()
 async def Hijau(ctx):
-    await ctx.send(f'**🌍Fitur Aksi Hijau adalah sebuah permainan interaktif yang dirancang untuk mendorong pengguna melakukan tindakan ramah lingkungan dalam kehidupan sehari-hari. Dengan menggunakan perintah khusus, pengguna dapat mencatat aksi hijau yang mereka lakukan, mendapatkan poin, naik level, dan bersaing di leaderboard. Fitur ini bertujuan untuk meningkatkan kesadaran dan partisipasi dalam pelestarian lingkungan dengan cara yang menyenangkan dan memotivasi!** 🌿')
+    await ctx.send(f'**🌍 Fitur Aksi Hijau adalah sebuah permainan interaktif yang dirancang untuk mendorong pengguna melakukan tindakan ramah lingkungan dalam kehidupan sehari-hari. Dengan menggunakan perintah khusus, pengguna dapat mencatat aksi hijau yang mereka lakukan, mendapatkan poin, naik level, dan bersaing di leaderboard. Fitur ini bertujuan untuk meningkatkan kesadaran dan partisipasi dalam pelestarian lingkungan dengan cara yang menyenangkan dan memotivasi!** 🌿')
 
 @bot.command()
 async def Pilah(ctx, *, sampah: str):
@@ -1089,26 +1061,19 @@ async def books_admin_error(ctx, error):
 
 @bot.command()
 async def BookDescription(ctx):
-    """Hanya baca JSON lokal — cepat. Pengisian database = `$TrueAdminBookDescription`."""
-    data_buku_cache = []
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            try:
-                data_buku_cache = json.load(f)
-            except json.JSONDecodeError:
-                data_buku_cache = []
-
-    if not data_buku_cache:
+    """Buku acak dari database SQLite."""
+    buku = get_random_book()
+    
+    if not buku:
         await ctx.send(
-            "📚 **Perpustakaan lokal masih kosong.**\n"
+            "📚 **Perpustakaan masih kosong.**\n"
             "Pemilik bot bisa mengisi dengan `$TrueAdminBookDescription <jumlah>` "
-            "(scraping ke web, lalu simpan ke JSON). Setelah ada data, perintah ini jadi instan."
+            "(scraping ke web, lalu simpan ke SQLite). Setelah ada data, perintah ini jadi instan."
         )
         return
 
-    await ctx.send("📖 **Membuka entri acak dari perpustakaan lokal…**")
-    buku = random.choice(data_buku_cache)
-    sumber = "Perpustakaan lokal (JSON)"
+    await ctx.send("📖 **Membuka entri acak dari perpustakaan…**")
+    sumber = "Database SQLite"
 
     judul = buku.get("judul", "Tanpa Judul")
     harga = buku.get("harga", "N/A")
@@ -1123,8 +1088,7 @@ async def BookDescription(ctx):
     msg += f"**Judul:** {judul}\n"
     msg += f"**Harga:** {harga}\n"
     msg += f"**Sinopsis:**\n> {sinopsis}\n\n"
-    msg += f"🔗 **Link Lengkap:** <{url}>\n"
-    msg += f"✨ *Perpustakaan lokal: **{len(data_buku_cache)}** judul.*"
+    msg += f"🔗 **Link Lengkap:** <{url}>"
     await ctx.send(msg)
 
 class BookSelect(ui.Select):
@@ -1166,25 +1130,7 @@ async def FindBooks(ctx, *, keyword: str):
         await ctx.send("⚠️ Masukkan keyword untuk pencarian!")
         return
 
-    data_buku_cache = []
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            try:
-                data_buku_cache = json.load(f)
-            except json.JSONDecodeError:
-                data_buku_cache = []
-
-    if not data_buku_cache:
-        await ctx.send("📚 **Perpustakaan lokal masih kosong.**\nPemilik bot bisa mengisi dengan `$TrueAdminBookDescription <jumlah>`.")
-        return
-
-    keyword_lower = keyword.lower()
-    hasil_cari = []
-    for book in data_buku_cache:
-        judul = book.get("judul", "").lower()
-        deskripsi = book.get("deskripsi", "").lower()
-        if keyword_lower in judul or keyword_lower in deskripsi:
-            hasil_cari.append(book)
+    hasil_cari = search_books(keyword)
 
     if not hasil_cari:
         await ctx.send(f"❌ Tidak ada buku yang cocok dengan keyword **'{keyword}'**.")
@@ -1243,39 +1189,63 @@ async def TrueAdminBookDescription(ctx, jumlah: int = 25):
             await ctx.send("ℹ️ **Scraping Selesai:** Semua buku yang ditemukan sudah ada di database atau tidak ada data baru.")
             return
 
-        # Muat data lama
-        data_lama = []
-        if os.path.exists(CACHE_FILE):
-            with open(CACHE_FILE, "r", encoding="utf-8") as f:
-                try:
-                    data_lama = json.load(f)
-                except:
-                    data_lama = []
-
-        # Tambahkan buku baru ke data_lama (sudah terfilter unik dari scrape_buku_baru)
-        data_lama.extend(buku_baru_list)
-        buku_ditambahkan = len(buku_baru_list)
-        
-        if len(data_lama) > 500:
-            data_lama = data_lama[-500:]  # Hapus yang lama jika lebih dari 500
-
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data_lama, f, indent=4, ensure_ascii=False)
+        # Simpan buku baru ke SQLite
+        buku_ditambahkan = 0
+        for buku in buku_baru_list:
+            add_book(buku["judul"], buku["harga"], buku["deskripsi"], buku["url"])
+            buku_ditambahkan += 1
 
         msg = f"✅ **Update Selesai!**\n"
-        msg += f"Baru ditambahkan: **{buku_ditambahkan}**\n"
-        msg += f"Total Koleksi: **{len(data_lama)}** buku."
+        msg += f"Baru ditambahkan: **{buku_ditambahkan}** buku ke SQLite."
         
         await ctx.send(msg)
 
     except Exception as e:
         await ctx.send(f"❌ Terjadi error sistem: {e}")
 
+# ... rest of the code remains the same ...
 # Pesan Error jika yang memanggil bukan Admin
 @TrueAdminBookDescription.error
 async def true_admin_book_description_error(ctx, error):
     if isinstance(error, commands.NotOwner):
         await ctx.send("⛔ **Akses Ditolak!** Perintah ini hanya bisa digunakan oleh Pengembang Bot (True_Admin).")
+
+@bot.command()
+async def Scan(ctx):
+    if ctx.message.attachments:
+        # 1. Simpan gambar dari Discord
+        await ctx.send("🔍 Memproses gambar...")
+        await ctx.message.attachments[0].save("temp.jpg")
+        
+        try:
+            # 2. Tanya ke si "Otak" (brain.py)
+            label, score = check_image("temp.jpg")
+            
+            # Debug: print hasil prediksi
+            print(f"DEBUG: Label={label}, Score={score}")
+            
+            # 3. Logika Poin
+            if "Target" in label and score > 0.90:
+                # Tambah poin ke user
+                user_id = str(ctx.author.id)
+                if os.path.exists(POIN_FILE):
+                    with open(POIN_FILE, "r", encoding="utf-8") as f:
+                        poin_data = json.load(f)
+                else:
+                    poin_data = {}
+                
+                poin_data[user_id] = poin_data.get(user_id, 0) + 10
+                
+                with open(POIN_FILE, "w", encoding="utf-8") as f:
+                    json.dump(poin_data, f, indent=4, ensure_ascii=False)
+                
+                await ctx.send(f"✅ AI Yakin ini {label} sampahnya ({score*100:.0f}%). +10 Poin! 🌿")
+            else:
+                await ctx.send(f"❌ AI tidak yakin ini sampah (Label: {label}, Confidence: {score*100:.0f}%). Coba foto lebih dekat!")
+        except Exception as e:
+            await ctx.send(f"❌ Error saat memproses gambar: {e}")
+    else:
+        await ctx.send("⚠️ Tolong kirim gambar dengan command ini! Upload gambar lalu ketik $scan")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
