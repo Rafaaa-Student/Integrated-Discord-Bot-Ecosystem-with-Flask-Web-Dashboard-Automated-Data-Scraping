@@ -22,6 +22,7 @@ Bot ini dirancang untuk memotivasi pengguna melakukan tindakan ramah lingkungan 
 - **$Kategori**: Lihat kategori sampah (organik/anorganik/berbahaya)
 - **$Pilah <sampah>**: Cek kategori jenis sampah
 - **$Tambah_Kategori**: Tambah jenis sampah baru ke kategori
+- **$Scan**: Upload gambar untuk klasifikasi AI (Target/Neutral/Distraction) + 10 poin jika confidence > 90%
 
 ### 🕸️ Fitur Web Scraping
 Mengambil data dari internet untuk memberikan rekomendasi dan informasi:
@@ -56,6 +57,8 @@ Dashboard interaktif untuk memantau data bot:
 - **Books**: Lihat koleksi buku dari database
 - **Search Books**: Cari buku berdasarkan keyword
 - **Admin Controls**: Kirim pesan ke bot Discord, trigger scraping buku, buat event baru
+- **Dark/Light Mode Toggle**: Switch tema dengan efek 3D sphere di dark mode
+- **Interactive Features**: Emoji rain, ganti background hero section, fakta random dengan efek 3D
 
 ### 🔌 Sistem API Internal
 Bot menjalankan API server internal di `localhost:8080` untuk terintegrasi dengan website:
@@ -94,7 +97,7 @@ Bot menggunakan sistem level berbasis poin hijau:
 
 ```powershell
 # Install library Python
-pip install discord.py requests beautifulsoup4 certifi flask aiohttp
+pip install discord.py requests beautifulsoup4 certifi flask aiohttp python-dotenv tf-keras pillow
 
 # Atau dari requirements.txt
 pip install -r requirements.txt
@@ -160,6 +163,7 @@ Discord Bot (BOT.py)           Website Dashboard (Flask)
 ```
 Bot_Raffasya_VII/
 ├── BOT.py                    # Main bot Discord dengan API server
+├── Brain.py                  # AI image classification module (TensorFlow/Keras)
 ├── website/
 │   ├── app.py               # Flask web application
 │   ├── templates/           # HTML templates
@@ -173,6 +177,9 @@ Bot_Raffasya_VII/
 │       └── style.css
 ├── poin_hijau.json          # Database poin users
 ├── database_buku_log.json   # Database koleksi buku
+├── .env                     # Environment variables (DISCORD_TOKEN)
+├── keras_model.h5           # AI model untuk klasifikasi gambar
+├── labels.txt               # Label classification AI
 └── requirements.txt         # Python dependencies
 ```
 
@@ -214,12 +221,16 @@ Bot_Raffasya_VII/
 
 ## 📝 Credits
 
-Dibuat oleh anak kelas 7 SMP dengan ilmu:
+Dibuat oleh anak kelas 7 SMP (13 tahun) dengan ilmu:
 - Web Scraping (BeautifulSoup)
 - Database (JSON)
 - Bot Discord (discord.py)
 - API Internal (aiohttp)
 - Web Dashboard (Flask + Chart.js)
+- AI/ML (TensorFlow/Keras - Image Classification)
+- Environment Variables (python-dotenv)
 - Gamifikasi & Interaksi
+- CSS 3D Effects & Dark Mode
+- HTML/CSS/JavaScript
 
 🌿 **Bot RF' VII** - Membangun masa depan hijau dengan teknologi!
