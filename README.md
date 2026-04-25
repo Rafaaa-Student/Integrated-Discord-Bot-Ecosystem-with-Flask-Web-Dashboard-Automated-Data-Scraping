@@ -159,9 +159,9 @@ Discord Bot (BOT.py)           Website Dashboard (Flask)
   - Auto-scraping               - Search books
   - API Server (8080)           - Admin controls
        ↓                              ↓
-    Database (JSON) ←───────→ HTTP Requests
+    Database (SQLite) ←───────→ HTTP Requests
        ↓                              ↓
-  poin_hijau.json              database_buku_log.json
+  poin_hijau.json              books.db
 ```
 
 ### Data Flow:
