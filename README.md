@@ -1,4 +1,4 @@
-# Bot/AI Zenn' VII 🌿🤖
+# Zenn' VII 🌿🤖
 
 Bot Discord interaktif yang menggabungkan **gamifikasi aksi hijau**, **web scraping**, dan **dashboard website** untuk mendorong gaya hidup ramah lingkungan.
 
