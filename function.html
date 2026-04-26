@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Function - Bot RF' VII{% endblock %}
+{% block title %}Function - Zenn AI VII{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h1>🌍 Selamat Datang di Dashboard Bot RF' VII</h1>
+                <h1>🌍 Selamat Datang di Dashboard Bot Zenn VII</h1>
             </div>
             <div class="card-body">
                 <p>Bot Discord interaktif dengan fitur aksi hijau dan web scraping buku. Dibuat oleh anak kelas 7 SMP! 🚀</p>
@@ -50,6 +50,7 @@
                         </div>
                     </div>
                 </div>
+                {% if is_admin %}
                 <!-- Web-to-Bot Command -->
                 <div class="row mt-4">
                     <div class="col-md-12">
@@ -106,6 +107,20 @@
                         </div>
                     </div>
                 </div>
+                {% else %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>🔒 Admin Controls</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Fitur admin hanya tersedia untuk pemilik bot.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -114,6 +129,7 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('statsChart');
@@ -158,6 +174,38 @@
         });
         console.log('Chart created successfully');
 
+        // SocketIO connection for real-time updates
+        const socket = io();
+        
+        socket.on('connect', function() {
+            console.log('Connected to SocketIO');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('Disconnected from SocketIO');
+        });
+        
+        socket.on('update_data', function(data) {
+            console.log('Received update:', data);
+            
+            if (data.type === 'points_update') {
+                // Update stats cards
+                document.querySelector('.bg-success .card-text').textContent = data.total_users;
+                document.querySelector('.bg-info .card-text').textContent = data.total_points;
+                
+                // Update chart
+                statsChart.data.datasets[0].data = [
+                    data.total_users,
+                    data.total_points,
+                    Number("{{ total_books }}")
+                ];
+                statsChart.update();
+                
+                console.log('Chart updated in real-time!');
+            }
+        });
+
+        {% if is_admin %}
         // Handle form submission for sending message to bot
         const form = document.getElementById('sendMessageForm');
         const responseDiv = document.getElementById('responseMessage');
@@ -256,6 +304,7 @@
                 eventResponse.textContent = 'Error: ' + error.message;
             });
         });
+        {% endif %}
     });
 </script>
 {% endblock %}
