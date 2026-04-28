@@ -1,5 +1,9 @@
 # Zenn' VII 🌿🤖
 
+Halo, nama saya Raffasya Azka Al-Farabi, saya adalah anak kelas 7 SMP di SMP AL Kautsar Bandar Lampung. Saya adalah pembuat proyek mandiri ini.
+Saya membuat proyek ini dengan tujuan untuk mengedukasi anak-anak untuk bisa menjaga lingkungan dan menjadi pribadi yang lebih baik. 
+Saya menggabungkan beberapa teknologi seperti AI, Discord Bot, dan Website khusus untuk membuat proyek ini.
+
 Bot Discord interaktif yang menggabungkan **gamifikasi aksi hijau**, **web scraping**, dan **dashboard website** untuk mendorong gaya hidup ramah lingkungan.
 
 ---
@@ -18,6 +22,8 @@ Bot ini dirancang untuk memotivasi pengguna melakukan tindakan ramah lingkungan 
 - **$Add_Action <aksi>**: Usulkan aksi hijau baru
 - **$Event** (Admin): Mulai event eksklusif dengan aksi spesifik
 - **$Claim <cerita>**: Klaim event eksklusif (hanya 1 orang pertama) + 25 poin
+- **$Exclusive_Event <objek>** (Admin): Buat event eksklusif berbasis gambar (validasi AI Gemini) + 20 poin untuk pemenang
+- **$Claim_Exclusive**: Klaim event eksklusif dengan upload gambar (validasi AI, first-come-first-served, 2 menit cooldown)
 - **$Reset_Tips** (Admin): Reset jatah poin harian pengguna
 - **$Kategori**: Lihat kategori sampah (organik/anorganik/berbahaya)
 - **$Pilah <sampah>**: Cek kategori jenis sampah
@@ -188,7 +194,13 @@ Discord Bot (BOT.py)           Website Dashboard (Flask)
 1. **Bot Discord** menangani perintah users dan scraping
 2. **API Server** (localhost:8080) menyediakan endpoint untuk website
 3. **Website Flask** sebagai interface untuk kontrol bot dan melihat data
-4. **Database SQLite** menyimpan data buku
+4. **Database SQLite** menyimpan data buku, percakapan AI, dan event eksklusif
+
+### Database Schema:
+- **books**: Koleksi buku dari web scraping (id, judul, harga, deskripsi, url, created_at)
+- **conversations**: Riwayat percakapan AI Zenn VII (id, user_id, role, content, created_at)
+- **ai_usage**: Tracking limit penggunaan AI per user (user_id, daily_count, last_ask_date)
+- **exclusive_events**: Event eksklusif berbasis gambar (id, target_object, is_active, winner_id, created_at, closed_at)
 
 ---
 
@@ -231,6 +243,7 @@ Project_VII/
 - Website dashboard bisa kontrol bot tanpa perlu Discord
 - Auto-scraping otomatis tambah buku baru setiap 12 jam
 - API internal hanya akses dari localhost (secure)
+- Gunakan `$Claim_Exclusive` untuk event berbasis gambar dengan validasi AI (first-come-first-served)
 
 ### Untuk Users:
 - Dapatkan poin dengan melakukan aksi hijau
