@@ -288,4 +288,4 @@ Dibuat oleh anak kelas 7 SMP (13 tahun) dengan ilmu:
 - CSS 3D Effects & Dark Mode
 - HTML/CSS/JavaScript
 
-🌿 **Bot/AI Zenn' VII** - Membangun masa depan hijau dengan teknologi!
+🌿 **Zenn' VII** - Membangun masa depan hijau dengan teknologi!
