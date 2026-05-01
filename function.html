@@ -1,39 +1,53 @@
 {% extends "base.html" %}
 
-{% block title %}Function - Zenn AI VII{% endblock %}
+{% block title %}Function - Zenn' AI VII{% endblock %}
 
 {% block content %}
+<style>
+    #ecologyNetwork {
+        transition: all 0.5s ease;
+        box-shadow: inset 0 0 50px rgba(0,0,0,0.1);
+    }
+    
+    /* Overlay for Dark Mode visibility */
+    body.dark-mode #ecologyNetwork {
+        background: linear-gradient(rgba(19, 43, 51, 0.85), rgba(19, 43, 51, 0.85)), 
+                    url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1351&q=80') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        border-color: rgba(14, 155, 134, 0.4) !important;
+    }
+
+    .vis-network:focus {
+        outline: none;
+    }
+</style>
+
 <div class="row">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h1>🌍 Selamat Datang di Dashboard Bot Zenn VII</h1>
+                <h1>🌍 Selamat Datang di Dashboard Bot Zenn' VII</h1>
             </div>
             <div class="card-body">
                 <p>Bot Discord interaktif dengan fitur aksi hijau dan web scraping buku. Dibuat oleh anak kelas 7 SMP! 🚀</p>
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card text-white bg-success">
-                            <div class="card-body">
-                                <h5 class="card-title">Total Users</h5>
-                                <p class="card-text">{{ total_users }}</p>
-                            </div>
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block">Total User</small>
+                            <span class="h5 mb-0 fw-bold text-success">{{ total_users }}</span>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card text-white bg-info">
-                            <div class="card-body">
-                                <h5 class="card-title">Total Poin Hijau</h5>
-                                <p class="card-text">{{ total_poin }}</p>
-                            </div>
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block">Global XP</small>
+                            <span class="h5 mb-0 fw-bold text-primary">{{ total_poin }}</span>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card text-white bg-warning">
-                            <div class="card-body">
-                                <h5 class="card-title">Total Books</h5>
-                                <p class="card-text">{{ total_books }}</p>
-                            </div>
+                    <div class="col-4">
+                        <div class="p-2 border rounded bg-light">
+                            <small class="text-muted d-block">Global Gold</small>
+                            <span class="h5 mb-0 fw-bold text-warning">{{ total_gold }}</span>
                         </div>
                     </div>
                 </div>
@@ -45,12 +59,101 @@
                                 <h5>📊 Statistik Visual</h5>
                             </div>
                             <div class="card-body">
-                                <canvas id="statsChart" width="400" height="200"></canvas>
+                                <canvas id="statsChart" width="400" height="200" 
+                                    data-users="{{ total_users }}" 
+                                    data-poin="{{ total_poin }}" 
+                                    data-books="{{ total_books }}">
+                                </canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0">🪪 Digital Achievement Card</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-3">Lihat kartu prestasi kamu dengan badge dinamis (sesuai sistem level bot).</p>
+                                <a href="/profile" class="btn btn-primary">Buka Profil & Badge</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0">🕸️ The Ecology Network (vis.js)</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-3">
+                                    Pusat ekosistem menghubungkan kontribusi user ke kategori
+                                    <strong>Daur Ulang</strong> dan <strong>Aksi Nyata</strong>.
+                                    Semakin besar kontribusi, node makin besar dan edge makin tebal.
+                                </p>
+                                <div id="ecologyNetwork" 
+                                    data-graph='{{ ecology_graph_json|safe }}'
+                                    style="height: 500px; border-radius: 18px; border: 2px solid rgba(14, 155, 134, 0.2); 
+                                           background: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), 
+                                           url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1351&q=80');
+                                           background-size: cover; background-position: center; position: relative; overflow: hidden;">
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 {% if is_admin %}
+                <!-- Admin Only: Bug Reports Panel -->
+                <div class="card glass-card mt-4 border-danger shadow-lg">
+                    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center" style="border-radius: 15px 15px 0 0;">
+                        <h4 class="mb-0 fw-bold">🛠️ Admin Central: Laporan Bug</h4>
+                        <span class="badge bg-white text-danger fw-bold">{{ bug_reports|length }} Laporan</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="ps-4">Waktu</th>
+                                        <th>Pelapor</th>
+                                        <th>Server/Guild</th>
+                                        <th>Isi Laporan</th>
+                                        <th class="pe-4 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if bug_reports %}
+                                        {% for bug in bug_reports %}
+                                        <tr>
+                                            <td class="ps-4 small text-muted">{{ bug.created_at }}</td>
+                                            <td class="fw-bold text-primary">{{ bug.username }}</td>
+                                            <td><span class="badge bg-info text-dark">{{ bug.guild_name }}</span></td>
+                                            <td class="text-wrap" style="max-width: 300px;">{{ bug.report_text }}</td>
+                                            <td class="pe-4 text-center">
+                                                <span class="badge {% if bug.status == 'pending' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                                    {{ bug.status|upper }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center py-5 text-muted italic">
+                                                Belum ada laporan bug yang masuk. Website aman, bos! 😎
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light text-center small text-muted">
+                        Data diambil langsung dari SQLite database (tabel bug_reports)
+                    </div>
+                </div>
+
                 <!-- Web-to-Bot Command -->
                 <div class="row mt-4">
                     <div class="col-md-12">
@@ -130,6 +233,7 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('statsChart');
@@ -138,13 +242,19 @@
             return;
         }
         const chartCtx = ctx.getContext('2d');
+        
+        // Ambil data dari data-attributes untuk menghindari error linter
+        const totalUsers = Number(ctx.dataset.users) || 0;
+        const totalPoin = Number(ctx.dataset.poin) || 0;
+        const totalBooks = Number(ctx.dataset.books) || 0;
+
         const statsChart = new Chart(chartCtx, {
             type: 'bar',
             data: {
                 labels: ['Total Users', 'Total Poin Hijau', 'Total Books'],
                 datasets: [{
                     label: 'Statistik',
-                    data: [Number("{{ total_users }}"), Number("{{ total_poin }}"), Number("{{ total_books }}")],
+                    data: [totalUsers, totalPoin, totalBooks],
                     backgroundColor: [
                         'rgba(40, 167, 69, 0.6)',  // Hijau untuk Users
                         'rgba(23, 162, 184, 0.6)', // Biru untuk Poin
@@ -172,7 +282,102 @@
                 }
             }
         });
-        console.log('Chart created successfully');
+
+        // Ecology Network graph
+        const networkContainer = document.getElementById('ecologyNetwork');
+        let ecologyNetwork = null;
+        if (networkContainer) {
+            const graphDataRaw = networkContainer.dataset.graph;
+            const graphPayload = JSON.parse(graphDataRaw || '{}');
+            const nodes = new vis.DataSet(graphPayload.nodes || []);
+            const edges = new vis.DataSet(graphPayload.edges || []);
+            const data = { nodes: nodes, edges: edges };
+            const options = {
+                autoResize: true,
+                physics: {
+                    enabled: true,
+                    stabilization: { iterations: 150 },
+                    barnesHut: { gravitationalConstant: -3000, springLength: 150 }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 150,
+                    zoomView: true
+                },
+                nodes: {
+                    shape: 'dot',
+                    font: { 
+                        color: document.body.classList.contains('dark-mode') ? '#ffffff' : '#132b33', 
+                        size: 16, 
+                        face: 'Poppins',
+                        strokeWidth: 4,
+                        strokeColor: document.body.classList.contains('dark-mode') ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)'
+                    },
+                    borderWidth: 3,
+                    shadow: true
+                },
+                edges: {
+                    color: { color: '#7ea0ad', highlight: '#1f7f93', hover: '#0e9b86' },
+                    smooth: { type: 'continuous', roundness: 0.5 },
+                    width: 2,
+                    shadow: true
+                },
+                groups: {
+                    core: {
+                        color: { background: '#0e9b86', border: '#0b5f53', highlight: { background: '#12c4ab', border: '#0e9b86' } },
+                        font: { color: '#ffffff', size: 20, multi: true, bold: true }
+                    },
+                    category: {
+                        color: { background: '#4da3c9', border: '#2b6f90', highlight: { background: '#72bedf', border: '#4da3c9' } },
+                        font: { color: '#ffffff', size: 17, bold: true }
+                    },
+                    user: {
+                        color: { background: '#ffffff', border: '#3b7a93', highlight: { background: '#e1f5fe', border: '#3b7a93' } },
+                        font: { color: '#1b3c4a', size: 15, strokeWidth: 0 }
+                    }
+                }
+            };
+            
+            // Re-calculate font colors if theme changes
+            const updateNetworkTheme = () => {
+                const isDark = document.body.classList.contains('dark-mode');
+                ecologyNetwork.setOptions({
+                    nodes: {
+                        font: { 
+                            color: isDark ? '#ffffff' : '#132b33',
+                            strokeColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)'
+                        }
+                    }
+                });
+            };
+
+            ecologyNetwork = new vis.Network(networkContainer, data, options);
+            
+            // Listen for theme toggle if you have one
+            const themeObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.attributeName === 'class') {
+                        updateNetworkTheme();
+                    }
+                });
+            });
+            themeObserver.observe(document.body, { attributes: true });
+        }
+
+        async function refreshEcologyNetwork() {
+            if (!ecologyNetwork) return;
+            try {
+                const response = await fetch('/api/ecology_network');
+                if (!response.ok) return;
+                const latest = await response.json();
+                ecologyNetwork.setData({
+                    nodes: new vis.DataSet(latest.nodes || []),
+                    edges: new vis.DataSet(latest.edges || [])
+                });
+            } catch (error) {
+                console.error('Failed to refresh ecology network:', error);
+            }
+        }
 
         // SocketIO connection for real-time updates
         const socket = io();
@@ -197,15 +402,22 @@
                 statsChart.data.datasets[0].data = [
                     data.total_users,
                     data.total_points,
-                    Number("{{ total_books }}")
+                    totalBooks
                 ];
                 statsChart.update();
+                refreshEcologyNetwork();
                 
                 console.log('Chart updated in real-time!');
             }
         });
 
-        {% if is_admin %}
+        console.log('Chart created successfully');
+    });
+</script>
+
+{% if is_admin %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
         // Handle form submission for sending message to bot
         const form = document.getElementById('sendMessageForm');
         const responseDiv = document.getElementById('responseMessage');
@@ -304,7 +516,7 @@
                 eventResponse.textContent = 'Error: ' + error.message;
             });
         });
-        {% endif %}
     });
 </script>
+{% endif %}
 {% endblock %}
