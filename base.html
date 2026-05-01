@@ -3,44 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Zenn AI VII Dashboard{% endblock %}</title>
+    <title>{% block title %}Zenn' AI VII Dashboard{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    {% block styles %}{% endblock %}
     <style>
-        body { background-color: #f8f9fa; transition: background-color 0.3s, color 0.3s; }
-        .navbar { background-color: #28a745; transition: background-color 0.3s; }
-        .card { margin-bottom: 20px; }
-        .footer { background-color: #28a745; color: white; padding: 20px 0; margin-top: 40px; }
-        
-        /* Dark Mode Styles */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.78);
+            --glass-border: rgba(255, 255, 255, 0.35);
+            --text-main: #132b33;
+            --accent: #0f9f8f;
+            --nav-bg: rgba(14, 115, 97, 0.92);
+        }
+
+        body {
+            background: #eaf3f0;
+            color: var(--text-main);
+            transition: background-color 0.4s ease, color 0.4s ease;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(rgba(235, 244, 241, 0.72), rgba(233, 243, 239, 0.82)),
+                url("/assets/Foto-Utama.jpg") center/cover no-repeat;
+            z-index: -4;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.65), transparent 42%),
+                radial-gradient(circle at 78% 26%, rgba(97, 180, 168, 0.24), transparent 45%);
+            z-index: -3;
+            animation: skyGlow 10s ease-in-out infinite;
+        }
+
+        @keyframes skyGlow {
+            0%, 100% { opacity: 0.9; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        .navbar {
+            background: var(--nav-bg) !important;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 20px rgba(11, 54, 49, 0.2);
+            position: relative;
+            z-index: 3000;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 28px rgba(24, 72, 67, 0.14);
+            border-radius: 20px;
+        }
+
+        .card {
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 20px;
+            overflow: hidden;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 35px rgba(16, 58, 53, 0.18);
+        }
+
+        .footer {
+            background: var(--nav-bg);
+            color: #eaf7f4;
+            padding: 20px 0;
+            margin-top: 44px;
+            backdrop-filter: blur(8px);
+        }
+
+        .fade-up {
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity 0.65s ease, transform 0.65s ease;
+        }
+
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         body.dark-mode {
-            background-color: #1a1a1a !important;
+            --glass-bg: rgba(17, 22, 35, 0.72);
+            --glass-border: rgba(136, 157, 194, 0.2);
+            --text-main: #e8edf7;
+            --accent: #6f9cff;
+            --nav-bg: rgba(10, 12, 22, 0.92);
+            background: #070b14;
         }
+
+        body.dark-mode::before {
+            background: radial-gradient(circle at 12% 20%, rgba(43, 68, 122, 0.4), transparent 38%),
+                radial-gradient(circle at 88% 10%, rgba(63, 39, 110, 0.46), transparent 43%),
+                linear-gradient(180deg, #03060d 0%, #090f1f 100%);
+        }
+
+        body.dark-mode::after {
+            background:
+                radial-gradient(2px 2px at 20% 20%, #d8deff, transparent 50%),
+                radial-gradient(1.6px 1.6px at 70% 30%, #e8f1ff, transparent 50%),
+                radial-gradient(1.6px 1.6px at 35% 80%, #c8dcff, transparent 50%),
+                radial-gradient(1.8px 1.8px at 84% 68%, #f0f3ff, transparent 50%);
+            opacity: 0.75;
+            animation: twinkle 5s linear infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.55; }
+            50% { opacity: 0.85; }
+        }
+
         body.dark-mode .navbar {
-            background: linear-gradient(135deg, #1a5c37 0%, #145a32 100%) !important;
+            background: rgba(6, 10, 22, 0.9) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
         }
-        body.dark-mode .card-header {
-            background: linear-gradient(135deg, #1a5c37 0%, #145a32 100%) !important;
-        }
+
         body.dark-mode .footer {
-            background: linear-gradient(135deg, #1a5c37 0%, #145a32 100%) !important;
+            background: rgba(6, 10, 22, 0.9);
+            color: #c9d7fa;
         }
-        body.dark-mode .btn {
-            background-color: #1a5c37 !important;
-            border-color: #1a5c37 !important;
+
+        body.dark-mode .card-header,
+        body.dark-mode .card-header h1,
+        body.dark-mode .card-header h2,
+        body.dark-mode .card-header h3,
+        body.dark-mode .card-header h4,
+        body.dark-mode .card-header h5 {
+            background: linear-gradient(135deg, #111c3f 0%, #293772 100%) !important;
+            color: #ffffff !important;
         }
-        body.dark-mode .btn:hover {
-            background-color: #145a32 !important;
-            border-color: #145a32 !important;
+
+        /* Fix visibility on white/light backgrounds in dark mode */
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]),
+        body.dark-mode .feature-tile {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            color: #132b33 !important;
+        }
+
+        /* Hero section elements should stay light */
+        body.dark-mode .hero-section .kpi-badge,
+        body.dark-mode .hero-section .kpi-badge strong,
+        body.dark-mode .hero-section p,
+        body.dark-mode .hero-section h1,
+        body.dark-mode .section-title h2 {
+            color: #f5f9f8 !important;
+        }
+
+        body.dark-mode .social-chip {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            color: #132b33 !important;
+        }
+
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) .card-body,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) .card-title,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) .card-text,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) p,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) li,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) label,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) input,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) textarea,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) h1,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) h2,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) h3,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) h4,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) h5,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) h6,
+        body.dark-mode .feature-tile h5,
+        body.dark-mode .feature-tile p,
+        body.dark-mode .feature-tile li,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) table,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) th,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) tr,
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) td {
+            color: #132b33 !important;
+        }
+
+        /* Input fields in dark mode cards need dark text on light bg */
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) .form-control {
+            background-color: #ffffff !important;
+            color: #132b33 !important;
+            border: 1px solid #ced4da !important;
         }
         
-        /* Toggle Button */
+        body.dark-mode .card:not(.glass-card):not([class*="bg-"]) .form-control::placeholder {
+            color: #6c757d !important;
+        }
+
         .theme-toggle {
             position: fixed;
             top: 15px;
             right: 20px;
-            z-index: 1000;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 5005;
+            background: linear-gradient(135deg, #0b8a7d 0%, #3766b6 100%);
             border: none;
             border-radius: 50%;
             width: 50px;
@@ -62,9 +229,9 @@
             fill: white;
         }
         
-        /* Profile Dropdown */
         .profile-dropdown {
             position: relative;
+            z-index: 3200;
         }
         .profile-avatar {
             width: 40px;
@@ -79,26 +246,34 @@
             border-color: rgba(255, 255, 255, 0.8);
             transform: scale(1.05);
         }
+        .profile-link-text {
+            color: white;
+            margin-left: 10px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .profile-link-text:hover {
+            opacity: 0.8;
+            color: white;
+        }
         .profile-menu {
             position: absolute;
             top: 50px;
             left: 0;
-            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            background: linear-gradient(135deg, #118a79 0%, #195e86 100%);
             border-radius: 12px;
             padding: 15px;
             min-width: 250px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
             display: none;
-            z-index: 1001;
+            z-index: 3500;
             animation: fadeIn 0.3s ease;
         }
         .profile-menu.show {
             display: block;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px);} to { opacity: 1; transform: translateY(0);} }
         .profile-menu-header {
             display: flex;
             align-items: center;
@@ -156,24 +331,29 @@
             margin-bottom: 0;
         }
         .login-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #325db2 0%, #6d4bb8 100%);
             border: none;
             color: white;
             padding: 8px 20px;
             border-radius: 20px;
             font-weight: 500;
             transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
         }
         .login-btn:hover {
             transform: scale(1.05);
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            color: white;
+            text-decoration: none;
         }
         body.dark-mode .profile-menu {
-            background: linear-gradient(135deg, #1a5c37 0%, #145a32 100%);
+            background: linear-gradient(135deg, #141c3e 0%, #24356f 100%);
         }
-        
-        /* 3D Sphere Effect */
-        .sphere-container {
+
+        .solar-system {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -183,52 +363,121 @@
             opacity: 0;
             transition: opacity 0.5s;
         }
-        body.dark-mode .sphere-container {
-            opacity: 0.3;
+        body.dark-mode .solar-system {
+            opacity: 0.9;
         }
-        .sphere {
-            width: 300px;
-            height: 300px;
+
+        .sun-core {
+            width: 86px;
+            height: 86px;
             border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, 
-                rgba(255, 255, 255, 0.8) 0%,
-                rgba(102, 126, 234, 0.6) 20%,
-                rgba(118, 75, 162, 0.4) 40%,
-                rgba(26, 26, 26, 0.2) 60%,
-                transparent 100%);
-            box-shadow: 
-                0 0 80px rgba(102, 126, 234, 0.8),
-                0 0 120px rgba(118, 75, 162, 0.6),
-                0 0 160px rgba(102, 126, 234, 0.4),
-                inset 0 0 80px rgba(255, 255, 255, 0.3),
-                inset 0 0 40px rgba(102, 126, 234, 0.5);
-            animation: sphereFloat 6s ease-in-out infinite, sphereGlow 3s ease-in-out infinite alternate;
+            background: radial-gradient(circle at 35% 30%, #fff0ad, #f4c948 48%, #db8f19 100%);
+            box-shadow: 0 0 50px rgba(255, 208, 102, 0.7), 0 0 120px rgba(255, 180, 80, 0.25);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulseSun 3.2s ease-in-out infinite;
         }
-        @keyframes sphereFloat {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.05); }
+
+        .orbit {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            border: 1px dashed rgba(158, 189, 255, 0.32);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
         }
-        @keyframes sphereGlow {
+
+        .orbit.one { width: 200px; height: 200px; animation: spin 8s linear infinite; }
+        .orbit.two { width: 290px; height: 290px; animation: spin 12s linear infinite reverse; }
+        .orbit.three { width: 390px; height: 390px; animation: spin 16s linear infinite; }
+
+        .planet {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            top: 50%;
+            left: calc(100% - 8px);
+            transform: translateY(-50%);
+        }
+
+        .planet.blue { background: radial-gradient(circle at 30% 30%, #bbdaff, #4286ff); }
+        .planet.green { background: radial-gradient(circle at 30% 30%, #cfffd4, #29c468); }
+        .planet.purple { background: radial-gradient(circle at 30% 30%, #ebd8ff, #8a59de); }
+
+        @keyframes spin {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @keyframes pulseSun {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.06); }
+        }
+
+        /* Magical Cursor Stars Trail */
+        .cursor-star {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            box-shadow: 0 0 10px #fff, 0 0 20px #fff;
+            animation: starFall 1s ease-out forwards;
+        }
+
+        @keyframes starFall {
             0% { 
-                box-shadow: 
-                    0 0 80px rgba(102, 126, 234, 0.8),
-                    0 0 120px rgba(118, 75, 162, 0.6),
-                    0 0 160px rgba(102, 126, 234, 0.4),
-                    inset 0 0 80px rgba(255, 255, 255, 0.3),
-                    inset 0 0 40px rgba(102, 126, 234, 0.5);
+                transform: translate(0, 0) scale(1); 
+                opacity: 1; 
             }
             100% { 
-                box-shadow: 
-                    0 0 100px rgba(102, 126, 234, 1),
-                    0 0 150px rgba(118, 75, 162, 0.8),
-                    0 0 200px rgba(102, 126, 234, 0.6),
-                    inset 0 0 100px rgba(255, 255, 255, 0.5),
-                    inset 0 0 60px rgba(102, 126, 234, 0.7);
+                transform: translate(var(--move-x, 0), var(--move-y, 50px)) scale(0); 
+                opacity: 0; 
             }
+        }
+
+        /* Global Background Stars (White Dots) */
+        .global-stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+        }
+
+        body.dark-mode .global-stars-container {
+            opacity: 0.8;
+        }
+
+        .bg-star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
+            animation: twinkleGlobal 4s ease-in-out infinite;
+        }
+
+        @keyframes twinkleGlobal {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.1); }
         }
     </style>
 </head>
-<body>
+<body class="{% if session.get('theme') == 'dark' %}dark-mode{% endif %}">
+    <!-- Global Background Stars (White Dots) -->
+    <div class="global-stars-container" id="globalStarsContainer"></div>
     <!-- Theme Toggle Button -->
     <button class="theme-toggle" id="themeToggle" title="Toggle Dark/Light Mode">
         <svg id="themeIcon" viewBox="0 0 24 24">
@@ -237,59 +486,77 @@
         </svg>
     </button>
     
-    <!-- 3D Sphere Effect -->
-    <div class="sphere-container">
-        <div class="sphere"></div>
+    <div class="solar-system">
+        <div class="sun-core"></div>
+        <div class="orbit one"><div class="planet blue"></div></div>
+        <div class="orbit two"><div class="planet green"></div></div>
+        <div class="orbit three"><div class="planet purple"></div></div>
     </div>
     
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <div class="profile-dropdown me-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">🌿 Zenn' VII</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/function">Function</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/chat">Chat with Zenn</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/leaderboard">Leaderboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/books">Books</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/search_books">Search Books</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/chemical">Chemical</a></li>
+                </ul>
+                <div class="d-flex align-items-center">
                     {% if session.get('user') %}
-                    <img src="https://cdn.discordapp.com/avatars/{{ session.user_id }}/{{ session.user.avatar }}.png" 
-                         alt="Profile" 
-                         class="profile-avatar"
-                         id="profileAvatar">
-                    <div class="profile-menu" id="profileMenu">
-                        <div class="profile-menu-header">
-                            <img src="https://cdn.discordapp.com/avatars/{{ session.user_id }}/{{ session.user.avatar }}.png" 
-                                 alt="Avatar" 
-                                 class="profile-menu-avatar">
-                            <div class="profile-menu-info">
-                                <h6>{{ session.user.username }}#{{ session.user.discriminator }}</h6>
-                                <p>{{ session.user_id }}</p>
+                    <div class="profile-dropdown d-flex align-items-center">
+                        <img src="https://cdn.discordapp.com/avatars/{{ session.user_id }}/{{ session.user.avatar }}.png" 
+                             alt="Profile" 
+                             class="profile-avatar"
+                             id="profileAvatar">
+                        <a href="/profile" class="profile-link-text">Profile</a>
+                        <div class="profile-menu" id="profileMenu">
+                            <div class="profile-menu-header">
+                                <img src="https://cdn.discordapp.com/avatars/{{ session.user_id }}/{{ session.user.avatar }}.png" 
+                                     alt="Avatar" 
+                                     class="profile-menu-avatar">
+                                <div class="profile-menu-info">
+                                    <h6>{{ session.user.username }}#{{ session.user.discriminator }}</h6>
+                                    <p>{{ session.user_id }}</p>
+                                </div>
                             </div>
+                            <span class="profile-role role-user">Member</span>
+                            <a href="/profile" class="profile-menu-item">
+                                🪪 Achievement Card
+                            </a>
+                            <a href="https://discord.gg/JpxnK8hY" class="profile-menu-item" target="_blank">
+                                💬 Join Discord
+                            </a>
+                            <a href="/logout" class="profile-menu-item">
+                                🚪 Logout
+                            </a>
                         </div>
-                        <span class="profile-role {% if session.user_id == ADMIN_DISCORD_ID %}role-admin{% else %}role-user{% endif %}">
-                            {% if session.user_id == ADMIN_DISCORD_ID %}👑 Admin{% else %}👤 User{% endif %}
-                        </span>
-                        <a href="/logout" class="profile-menu-item">
-                            🚪 Logout
-                        </a>
                     </div>
                     {% else %}
-                    <a href="/login" class="login-btn">Login with Discord</a>
+                    <a href="/login" class="login-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                        </svg>
+                        Login with Discord
+                    </a>
                     {% endif %}
-                </div>
-                <a class="navbar-brand" href="/">🌿 Zenn AI VII</a>
-                <div class="navbar-nav">
-                    <a class="nav-link" href="/">Home</a>
-                    <a class="nav-link" href="/function">Function</a>
-                    <a class="nav-link" href="/chat">💬 Chat with Zenn</a>
-                    <a class="nav-link" href="/leaderboard">Leaderboard</a>
-                    <a class="nav-link" href="/books">Books</a>
-                    <a class="nav-link" href="/search_books">Search Books</a>
                 </div>
             </div>
         </div>
     </nav>
-    <div class="container mt-4">
+    <div class="container mt-4 fade-up">
         {% block content %}{% endblock %}
     </div>
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2026 Zenn AI VII. Dibuat dengan ilmu Web Scraping, Database, Bot Discord, dan juga interaktif oleh anak kelas 7 SMP.</p>
+            <p>&copy; 2026 Zenn' AI VII. Dibuat dengan ilmu Web Scraping, Database, Bot Discord, dan juga interaktif oleh anak kelas 7 SMP.</p>
         </div>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -339,6 +606,148 @@
                 }
             });
         }
+
+        // Fade-in on scroll
+        const faders = document.querySelectorAll('.fade-up');
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    io.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.08 });
+        faders.forEach((el) => io.observe(el));
+
+        // Magical Cursor Stars Trail Logic (Optimized with requestAnimationFrame)
+        let cursorTicking = false;
+        let lastCursorX = 0;
+        let lastCursorY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            lastCursorX = e.clientX;
+            lastCursorY = e.clientY;
+
+            if (!cursorTicking) {
+                window.requestAnimationFrame(() => {
+                    // Hanya buat bintang jika probabilitas terpenuhi (untuk visual yang tidak terlalu ramai)
+                    if (Math.random() > 0.82) { 
+                        createCursorStar(lastCursorX, lastCursorY);
+                    }
+                    cursorTicking = false;
+                });
+                cursorTicking = true;
+            }
+        });
+
+        function createCursorStar(x, y) {
+            const star = document.createElement('div');
+            star.className = 'cursor-star';
+            
+            // Randomize size
+            const size = Math.random() * 6 + 3;
+            star.style.width = size + 'px';
+            star.style.height = size + 'px';
+            
+            // Position
+            star.style.left = x + 'px';
+            star.style.top = y + 'px';
+            
+            // Randomize color slightly based on theme
+            const isDark = document.body.classList.contains('dark-mode');
+            if (isDark) {
+                const colors = ['#ffffff', '#e0e7ff', '#fef3c7', '#ffd700', '#bae6fd'];
+                star.style.background = colors[Math.floor(Math.random() * colors.length)];
+            } else {
+                const colors = ['#0f9f8f', '#3766b6', '#6d4bb8', '#10b981'];
+                star.style.background = colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            star.style.boxShadow = `0 0 ${size * 2}px ${star.style.background}`;
+            
+            // Random movement direction for falling effect
+            const moveX = (Math.random() - 0.5) * 40;
+            const moveY = 40 + Math.random() * 40;
+            star.style.setProperty('--move-x', `${moveX}px`);
+            star.style.setProperty('--move-y', `${moveY}px`);
+            
+            document.body.appendChild(star);
+            
+            // Remove after animation
+            setTimeout(() => {
+                star.remove();
+            }, 1000);
+        }
+
+        // Global Background Stars Initialization
+        function createGlobalStars() {
+            const container = document.getElementById('globalStarsContainer');
+            if (!container) return;
+            
+            // Bersihkan kontainer jika sudah ada isinya (untuk hot reload/re-init)
+            container.innerHTML = '';
+            
+            const starCount = 150; // Jumlah bintik putih ditingkatkan sedikit
+            const fragment = document.createDocumentFragment();
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'bg-star';
+                
+                // Ukuran acak bintik (0.5px sampai 2.5px)
+                const size = Math.random() * 2 + 0.5;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                
+                // Posisi acak
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                
+                // Delay animasi acak agar kedap-kedipnya natural
+                star.style.animationDelay = Math.random() * 8 + 's';
+                star.style.animationDuration = (Math.random() * 4 + 3) + 's';
+                
+                // Simpan data kecepatan untuk efek parallax saat mouse gerak
+                star.dataset.parallaxSpeed = Math.random() * 0.04 + 0.01;
+                
+                fragment.appendChild(star);
+            }
+            container.appendChild(fragment);
+        }
+
+        // Mouse Parallax for Background Stars (Optimized with requestAnimationFrame)
+        let ticking = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    updateStarsParallax(lastMouseX, lastMouseY);
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        });
+
+        function updateStarsParallax(mouseX, mouseY) {
+            const stars = document.querySelectorAll('.bg-star');
+            const relX = (mouseX / window.innerWidth) - 0.5;
+            const relY = (mouseY / window.innerHeight) - 0.5;
+            
+            stars.forEach(star => {
+                const speed = parseFloat(star.dataset.parallaxSpeed);
+                const x = relX * 80 * speed;
+                const y = relY * 80 * speed;
+                star.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            });
+        }
+
+        // Panggil fungsi pembuat bintang saat halaman dimuat
+        createGlobalStars();
     </script>
     {% block scripts %}{% endblock %}
 </body>
