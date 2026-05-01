@@ -30,6 +30,15 @@ Bot ini dirancang untuk memotivasi pengguna melakukan tindakan ramah lingkungan:
 - **$Bug <laporan>**: (Khusus Admin Server) Laporkan bug/error langsung ke Project Admin untuk dilihat di dashboard website.
 - **$Leaderboard**: Ranking top 5 pengguna dengan XP (Reputation) tertinggi.
 
+### 🌐 Fitur Web Scraping & Data Mining 
+Bot ini juga dapat melakukan web scraping dan data mining untuk mendapatkan informasi terkini tentang lingkungan dan sains.
+
+- **Explore <topik>**: Cari artikel dari Wikipedia Indonesia dan ringkas dengan AI untuk mendapatkan informasi cepat.
+- **$FindBooks <judul>**: Pencarian buku lanjutan dengan filter kategori dan hasil yang lebih detail.
+- **$BookDescription <judul>**: Dapatkan rekomendasi buku random dari database untuk dibaca.
+- **$Books**: Cari buku dari database dengan pencarian berdasarkan judul, penulis, atau ISBN.
+- **$Quotes**: Dapatkan kutipan inspiratif dari internet.
+
 ### 🤖 Fitur AI Generative
 AI powered by **Google Gemini 2.0 Flash Lite** untuk interaksi cerdas:
 
@@ -255,4 +264,4 @@ Dibuat oleh anak kelas 7 SMP (13 tahun) dengan ilmu:
 - **Database**: Advanced SQLite management (Inventory, Bug Reporting, etc).
 - **Security**: Discord OAuth2 & Environment Variables.
 
-🌿 **Zenn' VII** - Membangun masa depan hijau dengan teknologi!
+🌿 **Bot/AI Zenn' VII** - Membangun masa depan hijau dengan teknologi!
