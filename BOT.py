@@ -15,12 +15,30 @@ from urllib.parse import urljoin
 from discord import ui
 import aiohttp
 from aiohttp import web
-from Brain import check_image, tanyakan_zenn, jelaskan_sampah
+from Brain import check_image, tanyakan_zenn, respons_scan, validate_image_with_gemini, tebak_unsur_dari_benda, fetch_wiki_data, ringkas_wikipedia_async
 from dotenv import load_dotenv
-from database import add_book, get_books, search_books, book_exists, get_random_book, save_conversation, get_conversation_history, check_ai_limit, increment_ai_count
+from database import add_book, get_books, search_books, book_exists, get_random_book, save_conversation, get_conversation_history, clear_conversation, check_ai_limit, increment_ai_count, create_exclusive_event, check_event_status, claim_exclusive_event
 
 # Load environment variables from .env file
 load_dotenv()
+
+WEBSITE_URL = os.getenv('WEBSITE_URL', 'http://127.0.0.1:5000')
+
+DEBUG_LOG_PATH = "debug-5bafde.log"
+DEBUG_SESSION_ID = "5bafde"
+
+def _debug_log(run_id, hypothesis_id, location, message, data=None):
+    payload = {
+        "sessionId": DEBUG_SESSION_ID,
+        "runId": run_id,
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data or {},
+        "timestamp": int(time.time() * 1000),
+    }
+    with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
 # Get admin Discord ID for AI limit bypass
 ADMIN_DISCORD_ID = os.getenv('ADMIN_DISCORD_ID', '')
@@ -383,35 +401,80 @@ def muat_poin():
 
 def simpan_poin(data):
     with open(POIN_FILE, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=4)
 
-def tambah_poin(user_id, jumlah=1):
+def tambah_data(user_id, xp=1, gold=1):
     data = muat_poin()
     uid = str(user_id)
-    data[uid] = data.get(uid, 0) + jumlah
+    if uid not in data:
+        data[uid] = {"xp": 0, "gold": 0}
+    
+    # Tambahkan XP dan Gold
+    data[uid]["xp"] += xp
+    data[uid]["gold"] += gold
     simpan_poin(data)
     
     # Emit SocketIO event for real-time update
     try:
         import requests
-        requests.post('http://localhost:5000/emit_update', json={
+        requests.post(f'{WEBSITE_URL}/emit_update', json={
             'type': 'points_update',
             'user_id': uid,
-            'new_points': data[uid],
-            'total_users': len(data),
-            'total_points': sum(data.values())
+            'new_xp': data[uid]["xp"],
+            'new_gold': data[uid]["gold"],
+            'total_users': len(data)
         }, timeout=2)
     except Exception as e:
         print(f"Failed to emit SocketIO event: {e}")
 
-def ambil_poin(user_id):
-    return muat_poin().get(str(user_id), 0)
+def tambah_data_random(user_id, base_amount):
+    """Tambah XP atau Gold secara random (50:50 chance)"""
+    data = muat_poin()
+    uid = str(user_id)
+    if uid not in data:
+        data[uid] = {"xp": 0, "gold": 0}
+    
+    # Random choice: 50% XP, 50% Gold
+    is_xp = random.choice([True, False])
+    if is_xp:
+        data[uid]["xp"] += base_amount
+        reward_type = "XP"
+        reward_emoji = "⭐"
+    else:
+        data[uid]["gold"] += base_amount
+        reward_type = "Gold"
+        reward_emoji = "💰"
+    
+    simpan_poin(data)
+    
+    # Emit SocketIO event for real-time update
+    try:
+        import requests
+        requests.post(f'{WEBSITE_URL}/emit_update', json={
+            'type': 'points_update',
+            'user_id': uid,
+            'new_xp': data[uid]["xp"],
+            'new_gold': data[uid]["gold"],
+            'total_users': len(data)
+        }, timeout=2)
+    except Exception as e:
+        print(f"Failed to emit SocketIO event: {e}")
+    
+    return reward_type, reward_emoji
 
-def hitung_level(poin):
-    return min(poin // 5 + 1, 100)  
+def ambil_xp(user_id):
+    data = muat_poin()
+    return data.get(str(user_id), {"xp": 0})["xp"]
 
-def ambil_badge(poin):
-    level = hitung_level(poin)
+def ambil_gold(user_id):
+    data = muat_poin()
+    return data.get(str(user_id), {"gold": 0})["gold"]
+
+def hitung_level(xp):
+    return min(xp // 5 + 1, 100)  
+
+def ambil_badge(xp):
+    level = hitung_level(xp)
     badge = ""
     for batas, nama in sorted(LEVEL_BADGES.items()):
         if level >= batas:
@@ -419,6 +482,34 @@ def ambil_badge(poin):
         else:
             break
     return badge
+
+def kurangi_gold(user_id, jumlah):
+    data = muat_poin()
+    uid = str(user_id)
+    if uid in data and data[uid]["gold"] >= jumlah:
+        data[uid]["gold"] -= jumlah
+        simpan_poin(data)
+        
+        # Emit SocketIO event for real-time update
+        try:
+            import requests
+            requests.post(f'{WEBSITE_URL}/emit_update', json={
+                'type': 'points_update',
+                'user_id': uid,
+                'new_xp': data[uid]["xp"],
+                'new_gold': data[uid]["gold"],
+                'total_users': len(data)
+            }, timeout=2)
+        except Exception as e:
+            print(f"Failed to emit SocketIO event: {e}")
+        return True
+    return False
+
+def has_item(user_id, item_name):
+    """Check if user has a specific item in inventory"""
+    from database import get_inventory
+    items = get_inventory(user_id)
+    return any(i['item_name'] == item_name for i in items)
 
 # Scheduled Task untuk Auto-Scraping
 @tasks.loop(hours=12)  # Jalankan setiap 12 jam
@@ -588,9 +679,21 @@ Bot ini memiliki berbagai perintah seru yang bisa kamu coba! Berikut adalah daft
 14. `$FungsiScraping` - Menampilkan daftar perintah terkait fitur web scraping.
 15. `$Zenn <pertanyaan>` - Tanya ke AI Zenn VII tentang lingkungan! AI akan mengingat percakapanmu.
 
+� **Fitur Ekonomi & Shop:**
+16. `$Shop` - Lihat daftar item keren yang bisa dibeli pakai poin!
+17. `$Buy <id>` - Beli item impianmu dari toko.
+18. `$Gacha` - Uji keberuntunganmu dapatkan badge langka (15 Poin).
+19. `$Inventory` - Cek barang-barang koleksi dan booster kamu.
+20. `$Has_Item <nama_item>` - Cek apakah kamu punya item tertentu.
+
 📝 Catatan:
 - Untuk `$Ulang`, contoh: `$Ulang 3 Halo` → Maka akan mengulang "Halo" sebanyak 3 kali.
 - Untuk `$Zenn`, contoh: `$Zenn apa itu global warming?` → AI akan menjawab dengan gaya santai dan edukatif.
+- Untuk `$Explore`, contoh: `$Explore global warming` → Akan mencari di Wikipedia dan meringkas dengan AI.
+- Untuk `$Has_Item`, contoh: `$Has_Item badge` → Cek apakah kamu punya item "badge".
+- Untuk `$Inventory`, contoh: `$Inventory` → Cek barang-barang koleksi dan booster kamu.
+- Untuk `$Buy`, contoh: `$Buy 1` → Beli item dengan ID 1.
+- Untuk `$Gacha`, contoh: `$Gacha` → Uji keberuntunganmu dapatkan badge langka (15 Poin)..
 """
 )
 
@@ -614,11 +717,15 @@ async def FungsiHijau(ctx):
 12. `$Tambah_Kategori <kategori> <nama_sampah>` - Menambahkan sampah baru ke kategori.
 13. `$Hijau` - Menjelaskan apa itu fitur aksi hijau dan bagaimana cara kerjanya di bot.
 14. `$Scan` - Menganalisis gambar sampah dan memberikan rekomendasi kategori.
+15. `$Exclusive_Event <nama_event>` - Menambahkan event eksklusif (ADMIN ONLY).
+16. `$Unsur <nama_benda>` - Mengetahui unsur-unsur yang terkandung dalam benda.
 
 📝 Catatan:
 - Untuk `$Tambah_Kategori`, contoh: `$Tambah_Kategori organik pisang` → Menambahkan "pisang" ke kategori "organik".
 - Untuk `$Claim`, contoh: `$Claim hari ini saya menanam pohon di halaman rumah` → Cerita harus minimal 20 kata dan sesuai aksi event.
 - Untuk `$Scan`, upload gambar sampah lalu ketik `$Scan` → AI akan menganalisis dan memberikan kategori.
+- Untuk `$Exclusive_Event`, contoh: `$Exclusive_Event Hari Lingkungan Sedunia` → Hanya admin yang bisa menambahkan event.
+- Untuk `$Unsur`, contoh: `$Unsur plastik` → Akan menampilkan unsur-unsur yang terkandung dalam plastik.
 """
 )
 
@@ -633,16 +740,21 @@ async def FungsiScraping(ctx):
 3. `$BookDescription` - Buku acak **cepat** dari database SQLite dengan deskripsi lengkap.
 4. `$FindBooks <keyword>` - Cari buku dari database lokal berdasarkan keyword (judul/deskripsi).
 5. `$WebScraping` - Menjelaskan apa itu web scraping dan bagaimana fitur ini bekerja di bot.
+6. `$Explore <topik>` - Jelajahi topik dari Wikipedia dengan ringkasan AI.
 
 📝 Catatan:
 - Untuk `$FindBooks`, contoh: `$FindBooks python` → Akan menampilkan daftar buku yang mengandung kata "python".
-- `$BookDescription` lebih cepat karena membaca dari database lokal, bukan scraping langsung ke website.
+- Untuk `$Explore`, contoh: `$Explore global warming` → Akan mencari di Wikipedia dan meringkas dengan AI.
 """
 )
 
 @bot.command()
 async def Halo(ctx):
     await ctx.send(f'Hi! Aku bot dari ciptaan kak Raffasya yaituu: {bot.user}!')
+
+@bot.command()
+async def Yoga(ctx):
+    await ctx.send(f'Woi lu goblok atau gimana sih? haha tolol lu')
 
 @bot.command()
 async def Goodbye(ctx):
@@ -706,38 +818,63 @@ async def Rubah(ctx):
 
 @bot.command()
 async def Website(ctx):
-    await ctx.send("🌐 Kunjungi website dashboard bot kami untuk info lebih lengkap dan interaktif!\nLink: http://127.0.0.1:5000/\n\nDi sana kamu bisa lihat leaderboard, koleksi buku, dan statistik bot. Jangan lupa jalankan website dulu ya! 🚀")
+    await ctx.send(f"🌐 Kunjungi website dashboard bot kami untuk info lebih lengkap dan interaktif!\nLink: {WEBSITE_URL}/\n\nDi sana kamu bisa lihat leaderboard, koleksi buku, dan statistik bot. 🚀")
+
+@bot.command()
+async def Unsur(ctx, *, nama_benda: str):
+    """Analisis unsur kimia dari sebuah benda dan berikan link ke tabel periodik"""
+    await ctx.send(f"🔬 **Menganalisis {nama_benda}...**")
+    
+    # Use AI to guess elements
+    elements = await tebak_unsur_dari_benda(nama_benda)
+    
+    if not elements:
+        await ctx.send(f"⚠️ Maaf, tidak bisa menebak unsur dari '{nama_benda}'. Coba nama benda yang lebih spesifik.")
+        return
+    
+    # Create URL with element parameters
+    elements_param = ','.join(elements)
+    website_url = f"{WEBSITE_URL}/chemical?highlight={elements_param}"
+    
+    # Format element symbols nicely
+    elements_display = ', '.join([f"**{e}**" for e in elements])
+    
+    await ctx.send(
+        f"🧪 **Analisis Unsur: {nama_benda}**\n"
+        f"Unsur utama: {elements_display}\n\n"
+        f"🔗 Lihat di tabel periodik (unsur akan bercahaya!):\n"
+        f"{website_url}"
+    )
+
+@bot.command()
+async def Explore(ctx, *, topik: str):
+    """Jelajahi topik dari Wikipedia dengan ringkasan AI"""
+    await ctx.send(f"🔍 **Mencari di Wikipedia: {topik}...**")
+    
+    # Fetch data from Wikipedia
+    wiki_data = fetch_wiki_data(topik)
+    
+    if not wiki_data:
+        await ctx.send(f"⚠️ Maaf, topik '{topik}' tidak ditemukan di Wikipedia Indonesia.")
+        return
+    
+    # Summarize with Gemini
+    if wiki_data.get("summary"):
+        ringkasan = await ringkas_wikipedia_async(wiki_data["summary"])
+    else:
+        ringkasan = "Tidak ada ringkasan tersedia."
+    
+    # Build response
+    response = f"📚 **{wiki_data.get('title', topik)}**\n\n"
+    response += f"📝 {ringkasan}\n\n"
+    
+    if wiki_data.get("url"):
+        response += f"🔗 Baca selengkapnya: {wiki_data['url']}"
+    
+    await ctx.send(response)
 
 @bot.command()
 async def Hijau(ctx):
-    await ctx.send(f'**🌍 Fitur Aksi Hijau adalah sebuah permainan interaktif yang dirancang untuk mendorong pengguna melakukan tindakan ramah lingkungan dalam kehidupan sehari-hari. Dengan menggunakan perintah khusus, pengguna dapat mencatat aksi hijau yang mereka lakukan, mendapatkan poin, naik level, dan bersaing di leaderboard. Fitur ini bertujuan untuk meningkatkan kesadaran dan partisipasi dalam pelestarian lingkungan dengan cara yang menyenangkan dan memotivasi!** 🌿')
-
-@bot.command()
-async def Pilah(ctx, *, sampah: str):
-    sampah = sampah.lower()
-    for kategori, daftar in kategori_sampah.items():
-        if sampah in daftar:
-            await ctx.send(f'Sampah "{sampah}" termasuk kategori: **{kategori.capitalize()}**.')
-            return
-    await ctx.send(f'Sampah "{sampah}" tidak dikenali. Tambahkan dengan `$Tambah_Kategori`.')
-
-@bot.command()
-async def Kategori(ctx):
-    pesan = "Kategori sampah:\n"
-    for kategori, daftar in kategori_sampah.items():
-        pesan += f"- **{kategori.capitalize()}**: {', '.join(daftar)}\n"
-    await ctx.send(pesan)
-
-@bot.command()
-async def Tambah_Kategori(ctx, kategori: str, *, sampah_baru: str):
-    kategori = kategori.lower()
-    if kategori not in kategori_sampah:
-        kategori_sampah[kategori] = []
-    kategori_sampah[kategori].append(sampah_baru.lower())
-    await ctx.send(f"Sampah `{sampah_baru}` telah ditambahkan ke kategori **{kategori.capitalize()}**.")
-
-@bot.command()
-async def Green_Action(ctx):
     user_id = str(ctx.author.id)
     hari_ini = str(datetime.date.today()) 
     
@@ -752,13 +889,13 @@ async def Green_Action(ctx):
     tip = random.choice(green_tips)
 
     if jumlah_pakai < 3: # Batas maksimal 3 kali sehari
-        tambah_poin(ctx.author.id, 1)
+        reward_type, reward_emoji = tambah_data_random(ctx.author.id, 1)
         tips_log[hari_ini][user_id] = jumlah_pakai + 1
         simpan_tips_log(tips_log)
         
         await ctx.send(
             f"🌱 **Tips Hijau Hari Ini:**\n{tip}\n\n"
-            f"🎁 Kamu dapat **+1 poin!** (Jatah hari ini: {jumlah_pakai + 1}/3)"
+            f"🎁 Kamu dapat **+1 {reward_type}!** {reward_emoji} (Jatah hari ini: {jumlah_pakai + 1}/3)"
         )
     else:
         # Tetap kasih tips, tapi poin tidak bertambah
@@ -787,12 +924,12 @@ async def Action(ctx, *, aktivitas: str):
                     )
                     return
 
-            tambah_poin(ctx.author.id, 5)
+            reward_type, reward_emoji = tambah_data_random(ctx.author.id, 5)
             USER_LAST_ACTION[user_id] = {"aksi": aksi.lower(), "waktu": waktu_sekarang}
             await ctx.send(
                 f"✅ Aksi tercatat: _{aktivitas}_\n"
                 f"(Kecocokan: **{aksi}**)\n"
-                f"Kamu mendapat **+5 poin hijau!** 🌱"
+                f"Kamu mendapat **+5 {reward_type}!** {reward_emoji} 🌱"
             )
             return
 
@@ -800,25 +937,45 @@ async def Action(ctx, *, aktivitas: str):
 
 @bot.command()
 async def Points(ctx):
-    poin = ambil_poin(ctx.author.id)
-    level = hitung_level(poin)
-    badge = ambil_badge(poin)
-    await ctx.send(f"🌟 Kamu punya **{poin} poin hijau**.\nLevel: {level} | Badge: {badge}")
+    user_id = str(ctx.author.id)
+    xp = ambil_xp(user_id)
+    gold = ambil_gold(user_id)
+    level = hitung_level(xp)
+    badge = ambil_badge(xp)
+    
+    embed = discord.Embed(title=f"📊 Statistik {ctx.author.display_name}", color=discord.Color.green())
+    embed.add_field(name="🌟 Experience (XP)", value=f"**{xp} XP**", inline=True)
+    embed.add_field(name="💰 Saldo Gold", value=f"**{gold} Gold**", inline=True)
+    embed.add_field(name="📈 Level", value=f"**Level {level}**", inline=True)
+    embed.add_field(name="🏅 Badge Rank", value=badge, inline=True)
+    embed.set_thumbnail(url=ctx.author.display_avatar.url)
+    
+    await ctx.send(embed=embed)
 
 
 @bot.command()
 async def Leaderboard(ctx):
     data = muat_poin()
     if not data:
-        await ctx.send("Belum ada aksi hijau tercatat 🌱")
+        await ctx.send("Belum ada pahlawan lingkungan tercatat 🌱")
         return
-    sorted_users = sorted(data.items(), key=lambda x: x[1], reverse=True)[:5]
-    pesan = "**🌿 Green Leaderboard**\n"
-    for i, (uid, poin) in enumerate(sorted_users, 1):
-        user = await bot.fetch_user(int(uid))
-        level = hitung_level(poin)
-        badge = ambil_badge(poin)
-        pesan += f"{i}. {user.name} - {poin} poin | Level {level} {badge}\n"
+        
+    # Urutkan berdasarkan XP
+    sorted_users = sorted(data.items(), key=lambda x: x[1]["xp"], reverse=True)[:5]
+    
+    pesan = "**� Top 5 Pahlawan Lingkungan (XP)**\n"
+    for i, (uid, stats) in enumerate(sorted_users, 1):
+        try:
+            user = await bot.fetch_user(int(uid))
+            name = user.name
+        except:
+            name = f"User {uid[-4:]}"
+            
+        level = hitung_level(stats["xp"])
+        badge = ambil_badge(stats["xp"])
+        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+        pesan += f"{medal} **{name}** - {stats['xp']} XP | Level {level} {badge}\n"
+    
     await ctx.send(pesan)
 
 @bot.command()
@@ -858,13 +1015,13 @@ async def Story(ctx, *, cerita: str):
 
     if cocok_aksi:
         poin_didapat = 5 * len(cocok_aksi)
-        tambah_poin(ctx.author.id, poin_didapat)
+        reward_type, reward_emoji = tambah_data_random(ctx.author.id, poin_didapat)
         story_log[user_id] = cerita
         simpan_story_log(story_log)
         aksi_terdeteksi = "\n- " + "\n- ".join(cocok_aksi)
         await ctx.send(
             f"📘 Cerita kamu:\n_{cerita}_\n\n✅ Ditemukan **{len(cocok_aksi)} aksi hijau**:{aksi_terdeteksi}\n"
-            f"🎉 Kamu mendapat **+{poin_didapat} poin hijau!**"
+            f"🎉 Kamu mendapat **+{poin_didapat} {reward_type}!** {reward_emoji}"
         )
         return
 
@@ -883,7 +1040,7 @@ async def Event(ctx):
     await ctx.send(
         f"🌿 **Event Eksklusif Telah Dimulai!** 🌿\n"
         f"Tugas eksklusif yang bisa dikerjakan: **{aksi}**\n"
-        f"Jika kamu melakukannya, gunakan `$Claim <Action>` dan dapatkan **+25 poin!** 🎉"
+        f"Jika kamu melakukannya, gunakan `$Claim <Action>` dan dapatkan **+25 XP & +25 Gold!** 🎉"
         f" **Minimal 20 kata** \n"
     )
 
@@ -914,12 +1071,12 @@ async def Claim(ctx, *, cerita: str):
         event["aksi_event"] = "" 
         simpan_event(event) 
     
-        tambah_poin(ctx.author.id, 25)
+        reward_type, reward_emoji = tambah_data_random(ctx.author.id, 25)
         event["sudah_klaim"].append(str(ctx.author.id)) 
         simpan_event(event)
         await ctx.send(
             f"✅ Cerita kamu cocok dengan event eksklusif ini: _{aksi}_\n"
-            f"🎉 Selamat {ctx.author.mention}, kamu ORANG PERTAMA🥇 yang mengklaim dan mendapat **+25 poin hijau!**"
+            f"🎉 Selamat {ctx.author.mention}, kamu ORANG PERTAMA🥇 yang mengklaim dan mendapat **+25 {reward_type}!** {reward_emoji}"
         )
     else:
         await ctx.send(
@@ -937,27 +1094,66 @@ async def Levelbadge(ctx):
 @bot.command()
 @commands.has_permissions(administrator=True) # Hanya yang punya role Admin di server
 async def AdminBoost(ctx):
-    tambah_poin(ctx.author.id, 10000)
+    tambah_data(ctx.author.id, 10000, 10000)
     
-    poin_sekarang = ambil_poin(ctx.author.id)
-    level = hitung_level(poin_sekarang)
-    badge = ambil_badge(poin_sekarang)
+    xp_sekarang = ambil_xp(ctx.author.id)
+    gold_sekarang = ambil_gold(ctx.author.id)
+    level = hitung_level(xp_sekarang)
+    badge = ambil_badge(xp_sekarang)
 
     await ctx.send(
         f"⚡ **Admin Boost Berhasil!** ⚡\n"
-        f"Poin {ctx.author.mention} sekarang: **{poin_sekarang}**\n"
+        f"XP: **{xp_sekarang}** | Gold: **{gold_sekarang}**\n"
         f"Level: **{level}** (MAX)\n"
         f"Badge: **{badge}**"
     )
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def CreateShopRoles(ctx):
+    """Membuat semua role untuk shop secara otomatis"""
+    roles_created = []
+    roles_failed = []
+    
+    for item_id, item in SHOP_ITEMS.items():
+        if 'role_name' in item:
+            role_name = item['role_name']
+            role = discord.utils.get(ctx.guild.roles, name=role_name)
+            
+            if role:
+                roles_failed.append(f"{role_name} (sudah ada)")
+            else:
+                try:
+                    await ctx.guild.create_role(
+                        name=role_name,
+                        colour=discord.Color.green(),
+                        reason="Created by Zenn VII Shop System"
+                    )
+                    roles_created.append(role_name)
+                except Exception as e:
+                    roles_failed.append(f"{role_name} (error: {e})")
+    
+    if roles_created:
+        await ctx.send(f"✅ **Role Berhasil Dibuat:**\n" + "\n".join(f"• {r}" for r in roles_created))
+    if roles_failed:
+        await ctx.send(f"⚠️ **Role Gagal:**\n" + "\n".join(f"• {r}" for r in roles_failed))
+    
+    if not roles_created and not roles_failed:
+        await ctx.send("ℹ️ Tidak ada role yang perlu dibuat untuk shop items.")
 
 # Biar keren, kasih pesan kalau ada member biasa yang coba-coba
 @AdminBoost.error
 async def admin_boost_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
-        await ctx.send("❌ Akses ditolak! Command ini khusus untuk **Petinggi Lingkungan**.")
+        await ctx.send("❌ Akses ditolak! Command ini khusus untuk **Petingi Lingkungan**.")
+
+@CreateShopRoles.error
+async def create_shop_roles_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ Akses ditolak! Command ini khusus untuk **Petingi Lingkungan**.")
 
 @bot.command()
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True) # Hanya yang punya role Admin di server
 async def Reset_Tips(ctx, member: discord.Member = None):
     hari_ini = str(datetime.date.today())
     tips_log = muat_tips_log()
@@ -1017,14 +1213,22 @@ async def Books(ctx):
     global LAST_SEARCH_TIME
     user_id = str(ctx.author.id)
     waktu_sekarang = time.time()
-    durasi_cooldown = 1800 # 30 menit
+    
+    # Cek Cooldown Reducer
+    durasi_cooldown = 1800 # Default 30 menit
+    if has_item(user_id, "Cooldown Reducer"):
+        durasi_cooldown = 900 # Jadi 15 menit
+        bonus_text = "⚡ **(Cooldown Reducer Aktif: 15 Menit)**"
+    else:
+        bonus_text = ""
 
     # 1. Cek Cooldown
     if user_id in LAST_SEARCH_TIME:
         selisih = waktu_sekarang - LAST_SEARCH_TIME[user_id]
         if selisih < durasi_cooldown:
             menit = int((durasi_cooldown - selisih) / 60)
-            return await ctx.send(f"⏳ **Sabar, Kawan!** Bot lagi istirahat. Tunggu **{menit} menit** lagi ya.")
+            detik = int((durasi_cooldown - selisih) % 60)
+            return await ctx.send(f"⏳ **Sabar, Kawan!** Bot lagi istirahat. Tunggu **{menit} menit {detik} detik** lagi ya. {bonus_text}")
 
     await ctx.send("📚 **Membuka Perpustakaan Digital...** Mencari buku keren untukmu!")
 
@@ -1033,15 +1237,15 @@ async def Books(ctx):
     if data_buku:
         pilihan_buku = random.choice(data_buku)
         
-        # 3. Tambah Poin (+2 Poin)
-        tambah_poin(ctx.author.id, 2)
+        # 3. Tambah Poin (+2 XP or Gold random)
+        reward_type, reward_emoji = tambah_data_random(ctx.author.id, 2)
         
         # 4. Simpan Waktu
         LAST_SEARCH_TIME[user_id] = waktu_sekarang
         
         msg = f"📖 **Rekomendasi Buku Hari Ini:**\n"
         msg += f"> **{pilihan_buku}**\n\n"
-        msg += f"✨ Wah, kamu baru saja mengeksplorasi literatur! Dapat **+2 poin!** 🌟\n"
+        msg += f"✨ Wah, kamu baru saja mengeksplorasi literatur! Dapat **+2 {reward_type}!** {reward_emoji} 🌟\n"
         msg += f"*Sumber: Books to Scrape*"
         
         await ctx.send(msg)
@@ -1116,11 +1320,13 @@ async def BookDescription(ctx):
     await ctx.send(msg)
 
 @bot.command()
+@commands.cooldown(15, 60, commands.BucketType.guild)
 async def Zenn(ctx, *, pertanyaan: str):
     """
     Tanya ke AI Zenn VII - asisten lingkungan yang keren dan santai! 🌿
     AI akan mengingat percakapan sebelumnya untuk jawaban yang lebih personal.
-    Limit: 25 pertanyaan per hari (Admin: unlimited)
+    Limit: 10 pertanyaan per hari (Admin: unlimited)
+    Cooldown: 15 kali per menit per server (Admin bypass cooldown)
     """
     if not pertanyaan.strip():
         await ctx.send("⚠️ **Masukkan pertanyaan kamu!** Contoh: `$zenn apa itu global warming?")
@@ -1128,19 +1334,23 @@ async def Zenn(ctx, *, pertanyaan: str):
     
     user_id = str(ctx.author.id)
     
-    # Check AI usage limit (The Guard System)
-    can_use, remaining, message = check_ai_limit(user_id, ADMIN_DISCORD_ID, daily_limit=25)
+    # Bypass cooldown for Admin
+    if user_id == ADMIN_DISCORD_ID:
+        ctx.command.reset_cooldown(ctx)
+    
+    # Check AI usage limit (The Guard System) - Discord platform with 10 limit
+    can_use, remaining, message = check_ai_limit(user_id, ADMIN_DISCORD_ID, daily_limit=10, platform='discord')
     
     if not can_use:
         await ctx.send(f"🚫 **Limit Harian Tercapai!**\n\n{message}")
         return
     
     # Increment AI usage count
-    increment_ai_count(user_id)
+    increment_ai_count(user_id, platform='discord')
     
     # Show remaining uses to user
     if remaining != float('inf'):
-        await ctx.send(f"📊 **Sisa Kuota AI Hari Ini:** {int(remaining)}/25")
+        await ctx.send(f"📊 **Sisa Kuota AI Hari Ini:** {int(remaining)}/10")
     
     # Simpan pesan user ke database (memory)
     save_conversation(user_id, 'user', pertanyaan)
@@ -1185,8 +1395,45 @@ async def Zenn(ctx, *, pertanyaan: str):
 async def Zenn_clear(ctx):
     """Hapus riwayat percakapan dengan Zenn VII."""
     user_id = str(ctx.author.id)
-    clear_conversation(user_id)
+    # #region agent log
+    _debug_log(
+        run_id="pre-fix",
+        hypothesis_id="H1",
+        location="BOT.py:Zenn_clear:entry",
+        message="Zenn_clear command invoked",
+        data={"userIdLength": len(user_id)},
+    )
+    _debug_log(
+        run_id="pre-fix",
+        hypothesis_id="H2",
+        location="BOT.py:Zenn_clear:pre-call",
+        message="Checking clear_conversation symbol",
+        data={
+            "isDefinedInGlobals": "clear_conversation" in globals(),
+            "callableInGlobals": callable(globals().get("clear_conversation")),
+        },
+    )
+    # #endregion
+    try:
+        clear_conversation(user_id)
+    except Exception as e:
+        # #region agent log
+        _debug_log(
+            run_id="pre-fix",
+            hypothesis_id="H3",
+            location="BOT.py:Zenn_clear:exception",
+            message="Exception while clearing conversation",
+            data={"errorType": type(e).__name__, "errorMessage": str(e)},
+        )
+        # #endregion
+        raise
     await ctx.send("🗑️ **Riwayat percakapan dengan Zenn VII telah dihapus!** Zenn akan mulai fresh dari awal.")
+
+@Zenn.error
+async def zenn_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        # Memberitahu sisa waktu tunggu dengan 1 angka di belakang koma
+        await ctx.send(f"Sabar ya! Fitur $Zenn lagi ramai. Coba lagi dalam {error.retry_after:.1f} detik.")
 
 class BookSelect(ui.Select):
     def __init__(self, books, ctx):
@@ -1321,7 +1568,7 @@ async def Scan(ctx):
             # Debug: print hasil prediksi
             print(f"DEBUG: Label={label}, Score={score}")
             
-            # 3. Logika Poin dengan Gemini AI untuk penjelasan
+            # 3. Logika Poin + respons variatif dari Gemini
             if "Target" in label and score > 0.90:
                 # Tambah poin ke user
                 user_id = str(ctx.author.id)
@@ -1340,8 +1587,8 @@ async def Scan(ctx):
                 thinking_msg = await ctx.send("🤖 **Zenn VII sedang menganalisis...** 🌿")
                 
                 try:
-                    # Panggil Gemini AI untuk penjelasan yang bervariasi
-                    penjelasan = await jelaskan_sampah(label, score)
+                    # Gemini "buka suara" berdasarkan hasil Keras
+                    penjelasan = await respons_scan(label, score, "", True)
                     
                     # Hapus pesan "sedang berpikir"
                     try:
@@ -1360,15 +1607,364 @@ async def Scan(ctx):
                     except discord.NotFound:
                         # Message already deleted, ignore
                         pass
-                    # Fallback ke pesan standar jika Gemini error
+                    # Fallback jika Gemini error
                     await ctx.send(f"✅ AI Yakin ini {label} sampahnya ({score*100:.0f}%). +10 Poin! 🌿")
                     print(f"AI Error: {e}")
             else:
-                await ctx.send(f"❌ AI tidak yakin ini sampah (Label: {label}, Confidence: {score*100:.0f}%). Coba foto lebih dekat!")
+                # Tetap minta Gemini kasih respons variatif walau belum lolos target
+                thinking_msg = await ctx.send("🤖 **Zenn VII sedang menganalisis...** 🌿")
+                try:
+                    penjelasan = await respons_scan(label, score, "", False)
+                    try:
+                        await thinking_msg.delete()
+                    except discord.NotFound:
+                        pass
+                    await ctx.send(penjelasan)
+                except Exception as e:
+                    try:
+                        await thinking_msg.delete()
+                    except discord.NotFound:
+                        pass
+                    await ctx.send(f"❌ AI tidak yakin ini sampah (Label: {label}, Confidence: {score*100:.0f}%). Coba foto lebih dekat!")
+                    print(f"AI Error: {e}")
         except Exception as e:
             await ctx.send(f"❌ Error saat memproses gambar: {e}")
     else:
         await ctx.send("⚠️ Tolong kirim gambar dengan command ini! Upload gambar lalu ketik $scan")
+
+@bot.command(name='Exclusive_Event')
+async def exclusive_event(ctx, *, target_object: str):
+    """Create exclusive event (ADMIN ONLY)"""
+    # Check if user is admin
+    if str(ctx.author.id) != str(ADMIN_DISCORD_ID):
+        await ctx.send("⛔ **Waduh!** Perintah ini khusus Admin aja ya! Kamu gak punya akses nih! 🚫")
+        return
+    
+    if not target_object:
+        await ctx.send("🤔 **Hmm...** Kamu lupa tentukan objek targetnya! Contoh: `$Exclusive_Event botol plastik` 📸")
+        return
+    
+    # Create event in database
+    success = create_exclusive_event(target_object)
+    
+    if success:
+        await ctx.send(f"@everyone 🚨 **EXCLUSIVE EVENT DIMULAI!** 🎉 Siapa cepat dia dapat! Gunakan command `$Claim_Exclusive` dan sertakan foto **{target_object}** untuk mendapatkan +20 poin! 🌟💚")
+    else:
+        await ctx.send("❌ **Yah!** Gagal bikin event nih. Coba lagi nanti ya! 🛠️")
+
+@bot.command(name='Claim_Exclusive')
+async def claim_exclusive(ctx):
+    """Claim exclusive event with image validation"""
+    if not ctx.message.attachments:
+        await ctx.send("📸 **Yah!** Kamu lupa upload gambar nih! Kirim foto dulu, baru ketik `$Claim_Exclusive` ya! 🌿")
+        return
+    
+    # Check event status
+    event = check_event_status()
+    
+    if not event:
+        await ctx.send("😔 **Hmm...** Sepertinya belum ada event eksklusif yang aktif saat ini. Tunggu info dari Admin ya! 🎯")
+        return
+    
+    # Check if already claimed (database handles this now)
+    if event['winner_id']:
+        # Let the database function handle the time check
+        await ctx.send("😅 **Ups!** Event ini baru saja diklaim oleh orang lain! Jangan sedih, nanti ada event lain lagi kok! 🎁")
+        return
+    
+    # Save image
+    await ctx.send("🔍 **Wih!** Zenn lagi cek fotonya nih... Tunggu sebentar ya! 🤖")
+    await ctx.message.attachments[0].save("temp_exclusive.jpg")
+    
+    # Validate with Gemini
+    target_object = event['target_object']
+    validation_result = await validate_image_with_gemini("temp_exclusive.jpg", target_object)
+    
+    if validation_result == "VALID":
+        # Claim the event
+        user_id = str(ctx.author.id)
+        success, message = claim_exclusive_event(user_id)
+        
+        if success:
+            # Add XP or Gold (+25 random for event)
+            reward_type, reward_emoji = tambah_data_random(user_id, 25)
+            
+            await ctx.send(f"🎉 **SELAMAT!** Kamu berhasil klaim event eksklusif! Foto **{target_object}** kamu keren banget! +25 {reward_type} untukmu! {reward_emoji} 🌟💚")
+        elif message == "recently_claimed":
+            await ctx.send("😅 **Ups!** Event ini baru saja diklaim oleh orang lain! Jangan sedih, nanti ada event lain lagi kok! 🎁")
+        elif message == "no_event":
+            await ctx.send("😔 **Hmm...** Sepertinya belum ada event eksklusif yang aktif saat ini. Tunggu info dari Admin ya! 🎯")
+        else:
+            await ctx.send("❌ **Yah!** Terjadi error sistem. Coba lagi nanti ya! 🛠️")
+    else:
+        await ctx.send(f"🤔 **Hmm...** Kayaknya fotonya bukan **{target_object}** deh. Coba foto yang lebih jelas ya! 📸")
+
+# ==================== SHOP, BUY, & GACHA COMMANDS ====================
+
+SHOP_ITEMS = {
+    "1": {"name": "Exclusive Discord Role", "price": 125, "rarity": "Rare", "desc": "Role khusus & warna nama keren di Discord!", "role_name": "🌿 Eco Warrior"},
+    "2": {"name": "Cooldown Reducer", "price": 250, "rarity": "Epic", "desc": "Potong waktu tunggu fitur $Books & $Explore!"},
+    "3": {"name": "AI Recharge Ticket", "price": 500, "rarity": "Legendary", "desc": "Tambah +5 jatah nanya $Zenn per hari!"}
+}
+
+GACHA_POOL = [
+    {"name": "💾 Junk Data", "rarity": "Common", "weight": 35},
+    {"name": "🔋 Low Battery", "rarity": "Common", "weight": 35},
+    {"name": "📡 Signal Booster", "rarity": "Rare", "weight": 12},
+    {"name": "📟 Vintage Circuit", "rarity": "Rare", "weight": 12},
+    {"name": "🌀 Solar Core", "rarity": "Epic", "weight": 2.5},
+    {"name": "⚡ Kinetic Engine", "rarity": "Epic", "weight": 2.5},
+    {"name": "🌌 Zenn Quantum Chip", "rarity": "Legendary", "weight": 1}
+]
+
+@bot.command(name='Shop')
+async def shop(ctx):
+    """Menampilkan daftar item di Toko Hijau"""
+    embed = discord.Embed(title="🏪 Toko Hijau Zenn VII", color=discord.Color.green())
+    embed.description = "Tukarkan poin hijau kamu dengan fitur keren! 🌿"
+    
+    for item_id, info in SHOP_ITEMS.items():
+        embed.add_field(
+            name=f"[{item_id}] {info['name']} ({info['rarity']})",
+            value=f"💰 Harga: **{info['price']} Poin**\n📝 {info['desc']}",
+            inline=False
+        )
+    
+    embed.add_field(
+        name="🎲 Gacha Koleksi Badge",
+        value="💰 Harga: **15 Gold**\n📝 Dapatkan badge acak untuk profilmu!\nCommand: `$Gacha`",
+        inline=False
+    )
+    
+    embed.set_footer(text=f"XP: {ambil_xp(ctx.author.id)} | Gold: {ambil_gold(ctx.author.id)} | Gunakan $Buy <id> untuk membeli")
+    await ctx.send(embed=embed)
+
+@bot.command(name='Buy')
+async def buy(ctx, item_id: str = None):
+    """Membeli item dari shop"""
+    if not item_id or item_id not in SHOP_ITEMS:
+        await ctx.send("⚠️ Masukkan ID item yang bener dong! Contoh: `$Buy 1` (cek ID di `$Shop`)")
+        return
+    
+    item = SHOP_ITEMS[item_id]
+    user_id = str(ctx.author.id)
+    
+    if kurangi_gold(user_id, item['price']):
+        from database import add_to_inventory, add_ai_boost, get_inventory
+        
+        # Logika khusus per item
+        if item_id == "3": # AI Recharge
+            add_ai_boost(user_id, 5)
+            await ctx.send(f"✅ **Berhasil!** Kamu membeli **{item['name']}**! Jatah $Zenn harianmu bertambah +5! 🎫✨")
+        else:
+            # Check if user already has this item
+            existing_items = get_inventory(user_id)
+            already_has = any(existing_item['item_id'] == item_id for existing_item in existing_items)
+            
+            if already_has:
+                # Refund gold
+                data = muat_poin()
+                data[user_id]["gold"] += item['price']
+                simpan_poin(data)
+                await ctx.send(f"⚠️ Kamu sudah punya **{item['name']}** di inventory! Gold sudah dikembalikan.")
+                return
+            
+            # Add to inventory
+            added = add_to_inventory(user_id, item_id, item['name'], item['rarity'])
+            
+            if not added:
+                # Refund gold if add failed (shouldn't happen with our check above)
+                data = muat_poin()
+                data[user_id]["gold"] += item['price']
+                simpan_poin(data)
+                await ctx.send(f"⚠️ Gagal menambahkan item ke inventory. Gold sudah dikembalikan.")
+                return
+            
+            # Auto assign role for item 1
+            if item_id == "1":
+                role_name = item.get('role_name', '🌿 Elite Donator')
+                role = discord.utils.get(ctx.guild.roles, name=role_name)
+                
+                if not role:
+                    # Create role if it doesn't exist
+                    try:
+                        role = await ctx.guild.create_role(
+                            name=role_name,
+                            colour=discord.Color.green(),
+                            reason="Auto-created by Zenn VII Shop"
+                        )
+                        await ctx.send(f"✅ Role **{role_name}** berhasil dibuat!")
+                    except Exception as e:
+                        await ctx.send(f"⚠️ Gagal membuat role: {e}")
+                        await ctx.send(f"✅ **Berhasil!** Kamu membeli **{item['name']}**! Item sudah masuk ke `$Inventory`. 🎁")
+                        return
+                
+                # Assign role to user
+                try:
+                    await ctx.author.add_roles(role)
+                    await ctx.send(f"✅ **Berhasil!** Kamu membeli **{item['name']}**! Role **{role_name}** sudah ditambahkan ke profilmu! 🎭✨")
+                except Exception as e:
+                    await ctx.send(f"⚠️ Gagal menambahkan role: {e}")
+                    await ctx.send(f"✅ **Berhasil!** Kamu membeli **{item['name']}**! Item sudah masuk ke `$Inventory`. 🎁")
+            else:
+                await ctx.send(f"✅ **Berhasil!** Kamu membeli **{item['name']}**! Item sudah masuk ke `$Inventory`. 🎁")
+    else:
+        await ctx.send(f"❌ **Gold Gak Cukup!** Kamu butuh **{item['price']} Gold**, tapi saldomu cuma **{ambil_gold(user_id)} Gold**. Ayo kumpulin lagi! 💪")
+
+@bot.command(name='Gacha')
+async def gacha(ctx):
+    """Gacha badge koleksi (15 Gold) - No Refund, Pure Gacha!"""
+    user_id = str(ctx.author.id)
+    biaya = 15
+    
+    # 1. Cek dan potong gold di awal
+    if not kurangi_gold(user_id, biaya):
+        await ctx.send(f"❌ **Gold Gak Cukup!** Gacha butuh **{biaya} Gold**. Saldomu: {ambil_gold(user_id)} Gold")
+        return
+    
+    # 2. Animasi gacha sederhana
+    msg = await ctx.send("🎰 **Memutar Gacha...** 🤞")
+    await asyncio.sleep(2)
+    
+    # 3. Logic gacha dengan weight
+    items = GACHA_POOL
+    names = [i['name'] for i in items]
+    weights = [i['weight'] for i in items]
+    
+    result = random.choices(items, weights=weights, k=1)[0]
+    
+    from database import add_to_inventory
+    
+    # 4. Langsung masukkan ke inventory (Tanpa cek duplikat)
+    added = add_to_inventory(user_id, "gacha_badge", result['name'], result['rarity'])
+    
+    # Safeguard jika database error (opsional)
+    if not added:
+        data = muat_poin()
+        data[user_id]["gold"] += biaya
+        simpan_poin(data)
+        await msg.edit(content=f"⚠️ Sistem error saat menyimpan item. Gold dikembalikan.")
+        return
+    
+    # 5. Tampilan Embed Hasil
+    color = {
+        "Common": discord.Color.light_grey(),
+        "Rare": discord.Color.blue(),
+        "Epic": discord.Color.purple(),
+        "Legendary": discord.Color.gold()
+    }.get(result['rarity'], discord.Color.green())
+    
+    embed = discord.Embed(title="✨ HASIL GACHA! ✨", color=color)
+    embed.add_field(name="Item Didapat:", value=f"**{result['name']}**", inline=False)
+    embed.add_field(name="Rarity:", value=result['rarity'], inline=True)
+    embed.set_footer(text=f"Berhasil ditambahkan ke inventory {ctx.author.name}")
+    
+    await msg.edit(content=None, embed=embed)
+
+class BadgeSelect(ui.Select):
+    def __init__(self, user_id, options):
+        super().__init__(placeholder="Pilih badge untuk ditampilkan...", options=options)
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("❌ Ini bukan menu kamu!", ephemeral=True)
+            return
+            
+        badge_name = self.values[0]
+        from database import set_selected_badge
+        if set_selected_badge(self.user_id, badge_name):
+            await interaction.response.send_message(f"✅ Berhasil! **{badge_name}** sekarang ditampilkan di profilmu! 🎭", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Gagal menyimpan pilihan. Coba lagi nanti.", ephemeral=True)
+
+class BadgeSelectView(ui.View):
+    def __init__(self, user_id, options):
+        super().__init__()
+        self.add_item(BadgeSelect(user_id, options))
+
+@bot.command(name='Select')
+async def select_badge(ctx):
+    """Memilih badge dari gacha untuk ditampilkan di profil"""
+    from database import get_inventory
+    user_id = str(ctx.author.id)
+    items = get_inventory(user_id)
+    
+    # Filter hanya item hasil gacha
+    gacha_badges = [i['item_name'] for i in items if i['item_id'] == "gacha_badge"]
+    
+    if not gacha_badges:
+        await ctx.send("❌ Kamu belum punya badge hasil gacha! Yuk `$Gacha` dulu (15 Poin).")
+        return
+        
+    # Ambil unik badge saja
+    unique_badges = sorted(list(set(gacha_badges)))
+    
+    options = []
+    for badge in unique_badges[:25]: # Limit 25 untuk Discord Select Menu
+        options.append(discord.SelectOption(label=badge, description="Pasang badge ini di profilmu"))
+        
+    view = BadgeSelectView(user_id, options)
+    await ctx.send("🎭 **Pilih Badge Gacha-mu:**\nBadge yang kamu pilih akan muncul sebagai 'Badge Aktif' di profile website!", view=view)
+
+@bot.command(name='Inventory')
+async def inventory(ctx):
+    from database import get_inventory, get_ai_boost
+    user_id = str(ctx.author.id)
+    items = get_inventory(user_id)
+    extra_ai = get_ai_boost(user_id)
+    
+    embed = discord.Embed(title=f"🎒 Inventory {ctx.author.display_name}", color=discord.Color.blue())
+    
+    if extra_ai > 0:
+        embed.add_field(name="⚡ AI Boost Active", value=f"Total: +{extra_ai} jatah harian", inline=False)
+    
+    if not items:
+        embed.description = "Inventory kamu masih kosong melompong. Yuk belanja di `$Shop`! 🛒"
+    else:
+        # --- PERBAIKAN DI SINI ---
+        # Gunakan set() untuk membuang duplikat secara otomatis
+        # Kita simpan dalam format string yang unik
+        unique_items = set()
+        for i in items:
+            unique_items.add(f"• **{i['item_name']}** ({i['rarity']})")
+        
+        # Ubah kembali menjadi list agar bisa digabung
+        inv_list = list(unique_items)
+        
+        # Gabungkan item menjadi teks tunggal
+        full_text = "\n".join(inv_list)
+        
+        # Tetap jaga limit karakter agar tidak error 400 Bad Request
+        if len(full_text) > 1024:
+            # Gunakan description karena limitnya 4096 karakter
+            embed.description = full_text[:4095] 
+        else:
+            # Jika aman di bawah 1024, masukkan ke field
+            embed.add_field(name="📦 Daftar Barang (Unik):", value=full_text, inline=False)
+        
+    await ctx.send(embed=embed)
+    
+@bot.command(name='Bug')
+@commands.has_permissions(administrator=True)
+async def bug_report(ctx, *, laporan: str = None):
+    """Melaporkan bug atau kesalahan bot (Khusus Admin Server)"""
+    if not laporan:
+        await ctx.send("⚠️ Tolong masukkan isi laporannya, bro! Contoh: `$Bug Fitur gacha gambarnya pecah`")
+        return
+    
+    from database import save_bug_report
+    user_id = str(ctx.author.id)
+    username = str(ctx.author)
+    guild_name = ctx.guild.name if ctx.guild else "Direct Message"
+    
+    if save_bug_report(user_id, username, guild_name, laporan):
+        embed = discord.Embed(title="✅ Laporan Terkirim!", color=discord.Color.green())
+        embed.description = f"Terima kasih **{ctx.author.display_name}**! Laporan kamu sudah masuk ke database pusat untuk dicek oleh Admin Proyek. 🛠️"
+        embed.add_field(name="Isi Laporan:", value=f"_{laporan}_", inline=False)
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("❌ Waduh, gagal nyimpen laporan ke database. Coba lagi nanti ya!")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
