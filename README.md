@@ -255,4 +255,4 @@ Dibuat oleh anak kelas 7 SMP (13 tahun) dengan ilmu:
 - **Database**: Advanced SQLite management (Inventory, Bug Reporting, etc).
 - **Security**: Discord OAuth2 & Environment Variables.
 
-🌿 **Bot/AI Zenn' VII** - Membangun masa depan hijau dengan teknologi!
+🌿 **Zenn' VII** - Membangun masa depan hijau dengan teknologi!
