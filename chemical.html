@@ -1,0 +1,831 @@
+{% extends "base.html" %}
+
+{% block title %}Tabel Periodik - Origin of Elements | Zenn VII{% endblock %}
+
+{% block styles %}
+<style>
+    .chemical-container {
+        max-width: 1500px;
+        margin: 80px auto 40px;
+        padding: 60px 40px;
+        position: relative;
+        z-index: 1;
+        transition: all 0.5s ease;
+    }
+
+    /* Minimalist (Light Mode) */
+    body:not(.dark-mode) .chemical-container {
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(20px);
+        border-radius: 40px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .chemical-header {
+        text-align: center;
+        margin-bottom: 60px;
+    }
+
+    .chemical-header h1 {
+        font-size: 2.8rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 15px;
+        padding: 10px 30px;
+        background: transparent;
+        color: #132b33;
+        transition: all 0.5s ease;
+    }
+
+    .chemical-header p {
+        color: #4a5568;
+        font-size: 1.15rem;
+        font-weight: 500;
+        padding: 8px 25px;
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 50px;
+        transition: all 0.5s ease;
+    }
+
+    /* Futuristic (Dark Mode) */
+    body.dark-mode .chemical-header h1 {
+        background: transparent;
+        color: #ffffff;
+        text-shadow: 0 0 20px rgba(255,255,255,0.3);
+    }
+
+    body.dark-mode .chemical-header p {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    body.dark-mode .chemical-container {
+        background: transparent;
+    }
+
+    .legend {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 15px;
+        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.6);
+        color: #132b33;
+        font-size: 0.8rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    body.dark-mode .legend-item {
+        background: rgba(15, 23, 42, 0.6);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+    }
+
+    .legend-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    .legend-color {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .periodic-table {
+        display: grid;
+        grid-template-columns: repeat(18, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 20px;
+        padding: 30px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    body.dark-mode .periodic-table {
+        background: rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .element {
+        min-height: 65px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 5px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        user-select: none;
+        z-index: 1;
+    }
+
+    .element:active {
+        transform: scale(0.95);
+    }
+
+    .element.empty {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        cursor: default;
+        pointer-events: none;
+    }
+
+    /* Minimalist Hover (Light) */
+    body:not(.dark-mode) .element:hover {
+        transform: translateY(-8px) scale(1.1);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        z-index: 100;
+        filter: brightness(1.05);
+    }
+
+    /* Futuristic Hover (Dark) */
+    body.dark-mode .element {
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        background-blend-mode: overlay;
+    }
+
+    body.dark-mode .element:hover {
+        transform: scale(1.25);
+        z-index: 100;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        filter: brightness(1.2);
+    }
+
+    /* Dynamic Glows based on Origin (Dark Mode) */
+    body.dark-mode .element.origin-big-bang:hover { box-shadow: 0 0 40px rgba(255, 107, 107, 0.6); }
+    body.dark-mode .element.origin-supernova:hover { box-shadow: 0 0 40px rgba(78, 205, 196, 0.6); }
+    body.dark-mode .element.origin-cosmic-ray:hover { box-shadow: 0 0 40px rgba(168, 230, 207, 0.6); }
+    body.dark-mode .element.origin-merger:hover { box-shadow: 0 0 40px rgba(255, 217, 61, 0.6); }
+    body.dark-mode .element.origin-man-made:hover { box-shadow: 0 0 40px rgba(108, 92, 231, 0.6); }
+    body.dark-mode .element.origin-unknown:hover { box-shadow: 0 0 40px rgba(149, 165, 166, 0.6); }
+
+    .element-number {
+        font-size: 0.6rem;
+        position: absolute;
+        top: 4px;
+        left: 6px;
+        font-weight: 700;
+        opacity: 0.7;
+    }
+
+    .element-symbol {
+        font-size: 1.2rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-top: 5px;
+    }
+
+    .element-name {
+        font-size: 0.5rem;
+        margin-top: 2px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .element-mass {
+        font-size: 0.45rem;
+        opacity: 0.7;
+        margin-top: 1px;
+    }
+
+    /* Origin Gradients - Premium Look */
+    .origin-big-bang { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); }
+    .origin-supernova { background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%); }
+    .origin-cosmic-ray { background: linear-gradient(135deg, #a8e6cf 0%, #88d8b0 100%); }
+    .origin-merger { background: linear-gradient(135deg, #ffd93d 0%, #f9c846 100%); }
+    .origin-man-made { background: linear-gradient(135deg, #6c5ce7 0%, #5b4cdb 100%); }
+    .origin-unknown { background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); }
+
+        /* Element detail modal */
+        .element-detail {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 248, 255, 0.95));
+            padding: 0;
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            max-width: 450px;
+            width: 90%;
+            display: none;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        body.dark-mode .element-detail {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+            border: 2px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .element-detail.active {
+            display: block;
+            animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalSlideIn {
+            from { 
+                opacity: 0; 
+                transform: translate(-50%, -40%) scale(0.9); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(1); 
+            }
+        }
+
+        .detail-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .detail-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .detail-symbol {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: white;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .detail-close {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(10px);
+        }
+
+        .detail-close:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: rotate(90deg) scale(1.1);
+        }
+
+        .detail-body {
+            padding: 30px;
+        }
+
+        .detail-info {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        body.dark-mode .detail-info {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .detail-info:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        body.dark-mode .detail-label {
+            color: #94a3b8;
+        }
+
+        .detail-value {
+            color: #1e293b;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        body.dark-mode .detail-value {
+            color: #f1f5f9;
+        }
+
+        .origin-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .origin-description {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 16px;
+            color: #334155;
+            font-size: 1rem;
+            line-height: 1.6;
+            border-left: 4px solid #667eea;
+        }
+
+        body.dark-mode .origin-description {
+            background: rgba(102, 126, 234, 0.15);
+            color: #cbd5e1;
+            border-left: 4px solid #818cf8;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: 999;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .periodic-table {
+                grid-template-columns: repeat(18, minmax(35px, 1fr));
+            }
+            .element {
+                font-size: 0.6rem;
+            }
+            .element-symbol {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .periodic-table {
+                grid-template-columns: repeat(9, 1fr);
+            }
+            .legend {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid chemical-container">
+    <div class="chemical-header fade-up">
+        <div class="glass-panel">
+            <h1 class="display-5 fw-bold mb-2">✨ Origin of Elements ✨</h1>
+            <p class="lead mb-0 opacity-75">Jelajahi jejak atomik kita di alam semesta.</p>
+        </div>
+    </div>
+
+    <div class="legend fade-up">
+        <div class="legend-item" data-origin="big-bang">
+            <div class="legend-color origin-big-bang"></div>
+            <span>Big Bang</span>
+        </div>
+        <div class="legend-item" data-origin="supernova">
+            <div class="legend-color origin-supernova"></div>
+            <span>Supernova</span>
+        </div>
+        <div class="legend-item" data-origin="cosmic-ray">
+            <div class="legend-color origin-cosmic-ray"></div>
+            <span>Sinar Kosmik</span>
+        </div>
+        <div class="legend-item" data-origin="merger">
+            <div class="legend-color origin-merger"></div>
+            <span>Neutron Star Merger</span>
+        </div>
+        <div class="legend-item" data-origin="man-made">
+            <div class="legend-color origin-man-made"></div>
+            <span>Man-made</span>
+        </div>
+        <div class="legend-item" data-origin="unknown">
+            <div class="legend-color origin-unknown"></div>
+            <span>Unknown</span>
+        </div>
+    </div>
+
+    <div class="periodic-table fade-up" id="periodicTable"></div>
+</div>
+
+<!-- SVG Canvas for Stardust Connect Lines -->
+<svg id="stardustCanvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;"></svg>
+
+<div class="overlay" id="overlay"></div>
+<div class="element-detail" id="elementDetail">
+    <div class="detail-header">
+        <div class="detail-symbol" id="detailSymbol">Au</div>
+        <button class="detail-close" onclick="closeDetail()">×</button>
+    </div>
+    <div class="detail-body">
+        <div class="detail-info">
+            <div class="detail-label">Nama</div>
+            <div class="detail-value" id="detailName">Emas</div>
+        </div>
+        <div class="detail-info">
+            <div class="detail-label">Nomor Atom</div>
+            <div class="detail-value" id="detailNumber">79</div>
+        </div>
+        <div class="detail-info">
+            <div class="detail-label">Massa Atom</div>
+            <div class="detail-value" id="detailMass">196.97</div>
+        </div>
+        <div class="detail-info">
+            <div class="detail-label">Asal-usul</div>
+            <div class="origin-badge" id="detailOrigin">Neutron Star Merger</div>
+        </div>
+        <div class="origin-description" id="detailDescription">
+            Emas ini tercipta dari tabrakan dua bintang neutron yang spektakuler!
+        </div>
+    </div>
+</div>
+
+<script>
+    const elements = [
+        { number: 1, symbol: 'H', name: 'Hidrogen', mass: '1.008', origin: 'big-bang', description: 'Unsur tertua di alam semesta! Muncul tak lama setelah Big Bang, sekitar 13.8 miliar tahun lalu.' },
+        { number: 2, symbol: 'He', name: 'Helium', mass: '4.003', origin: 'big-bang', description: 'Terbentuk dalam Big Bang dan juga dihasilkan oleh fusi nuklir di bintang.' },
+        { number: 3, symbol: 'Li', name: 'Litium', mass: '6.941', origin: 'big-bang', description: 'Sebagian kecil terbentuk di Big Bang, sisanya dari sinar kosmik dan supernova.' },
+        { number: 4, symbol: 'Be', name: 'Berilium', mass: '9.012', origin: 'cosmic-ray', description: 'Terbentuk ketika sinar kosmik menabrak atom lain di antariksa.' },
+        { number: 5, symbol: 'B', name: 'Boron', mass: '10.81', origin: 'cosmic-ray', description: 'Dibuat oleh sinar kosmik yang memecah atom berat di medium antarbintang.' },
+        { number: 6, symbol: 'C', name: 'Karbon', mass: '12.01', origin: 'supernova', description: 'Unsur kehidupan! Terbentuk di dalam bintang besar yang meledak sebagai supernova.' },
+        { number: 7, symbol: 'N', name: 'Nitrogen', mass: '14.01', origin: 'supernova', description: 'Dihasilkan dalam proses fusi nuklir di bintang masif dan dilepaskan saat supernova.' },
+        { number: 8, symbol: 'O', name: 'Oksigen', mass: '16.00', origin: 'supernova', description: 'Unsur paling melimpah di Bumi! Terbentuk dari fusi helium di bintang besar.' },
+        { number: 9, symbol: 'F', name: 'Fluor', mass: '19.00', origin: 'supernova', description: 'Terbentuk saat bintang masif meledak dan melepaskan neutrino berenergi tinggi.' },
+        { number: 10, symbol: 'Ne', name: 'Neon', mass: '20.18', origin: 'supernova', description: 'Gas mulia yang bercahaya! Terbentuk di inti bintang masif dan dilepas saat supernova.' },
+        { number: 11, symbol: 'Na', name: 'Natrium', mass: '22.99', origin: 'supernova', description: 'Terbentuk saat bintang masif meledak, menyebarkan materi ke seluruh alam semesta.' },
+        { number: 12, symbol: 'Mg', name: 'Magnesium', mass: '24.31', origin: 'supernova', description: 'Unsur penting untuk bintang! Terbentuk dari fusi karbon di bintang masif.' },
+        { number: 13, symbol: 'Al', name: 'Aluminium', mass: '26.98', origin: 'supernova', description: 'Logam paling melimpah di kerak Bumi! Terbentuk di bintang masif yang meledak.' },
+        { number: 14, symbol: 'Si', name: 'Silikon', mass: '28.09', origin: 'supernova', description: 'Bahan dasar batuan dan komputer! Terbentuk dari fusi oksigen di bintang masif.' },
+        { number: 15, symbol: 'P', name: 'Fosfor', mass: '30.97', origin: 'supernova', description: 'Unsur kehidupan penting! Terbentuk di bintang masif melalui proses fusi kompleks.' },
+        { number: 16, symbol: 'S', name: 'Sulfur', mass: '32.07', origin: 'supernova', description: 'Memberikan bau khas! Terbentuk dari fusi neon di bintang masif.' },
+        { number: 17, symbol: 'Cl', name: 'Klorin', mass: '35.45', origin: 'supernova', description: 'Pemutih dan desinfektan! Terbentuk saat bintang masif meledak.' },
+        { number: 18, symbol: 'Ar', name: 'Argon', mass: '39.95', origin: 'supernova', description: 'Gas mulua yang melimpah di atmosfer! Terbentuk di inti bintang masif.' },
+        { number: 19, symbol: 'K', name: 'Kalium', mass: '39.10', origin: 'supernova', description: 'Penting untuk sel hidup! Terbentuk dari fusi oksigen di bintang masif.' },
+        { number: 20, symbol: 'Ca', name: 'Kalsium', mass: '40.08', origin: 'supernova', description: 'Bahan tulang! Terbentuk dari fusi silikon di bintang masif.' },
+        { number: 21, symbol: 'Sc', name: 'Skandium', mass: '44.96', origin: 'supernova', description: 'Logam langka! Terbentuk dalam proses s di bintang masif.' },
+        { number: 22, symbol: 'Ti', name: 'Titanium', mass: '47.87', origin: 'supernova', description: 'Logam kuat untuk pesawat! Terbentuk dari fusi silikon di bintang masif.' },
+        { number: 23, symbol: 'V', name: 'Vanadium', mass: '50.94', origin: 'supernova', description: 'Logam keras! Terbentuk dalam proses s di bintang masif.' },
+        { number: 24, symbol: 'Cr', name: 'Kromium', mass: '52.00', origin: 'supernova', description: 'Logam mengkilap! Terbentuk dari fusi silikon di bintang masif.' },
+        { number: 25, symbol: 'Mn', name: 'Mangan', mass: '54.94', origin: 'supernova', description: 'Penting untuk baja! Terbentuk dalam proses s di bintang masif.' },
+        { number: 26, symbol: 'Fe', name: 'Besi', mass: '55.85', origin: 'supernova', description: 'Unsur paling stabil! Terbentuk di inti bintang dan dilepas saat supernova.' },
+        { number: 27, symbol: 'Co', name: 'Kobalt', mass: '58.93', origin: 'supernova', description: 'Penting untuk vitamin B12! Terbentuk dalam proses s di bintang masif.' },
+        { number: 28, symbol: 'Ni', name: 'Nikel', mass: '58.69', origin: 'supernova', description: 'Logam tahan korosi! Terbentuk dari fusi besi di bintang masif.' },
+        { number: 29, symbol: 'Cu', name: 'Tembaga', mass: '63.55', origin: 'supernova', description: 'Konduktor listrik! Terbentuk dalam proses s di bintang masif.' },
+        { number: 30, symbol: 'Zn', name: 'Seng', mass: '65.38', origin: 'supernova', description: 'Penting untuk kekebalan! Terbentuk dalam proses s di bintang masif.' },
+        { number: 31, symbol: 'Ga', name: 'Galium', mass: '69.72', origin: 'supernova', description: 'Meleham di tangan! Terbentuk dalam proses s di bintang masif.' },
+        { number: 32, symbol: 'Ge', name: 'Germanium', mass: '72.63', origin: 'supernova', description: 'Semikonduktor! Terbentuk dalam proses s di bintang masif.' },
+        { number: 33, symbol: 'As', name: 'Arsenik', mass: '74.92', origin: 'supernova', description: 'Beracun tapi berguna! Terbentuk dalam proses s di bintang masif.' },
+        { number: 34, symbol: 'Se', name: 'Selenium', mass: '78.97', origin: 'supernova', description: 'Penting untuk tubuh! Terbentuk dalam proses s di bintang masif.' },
+        { number: 35, symbol: 'Br', name: 'Bromin', mass: '79.90', origin: 'supernova', description: 'Cair pada suhu kamar! Terbentuk dalam proses s di bintang masif.' },
+        { number: 36, symbol: 'Kr', name: 'Kripton', mass: '83.80', origin: 'supernova', description: 'Gas mulua yang bercahaya! Terbentuk dalam proses s di bintang masif.' },
+        { number: 37, symbol: 'Rb', name: 'Rubidium', mass: '85.47', origin: 'supernova', description: 'Logam alkali reaktif! Terbentuk dalam proses s di bintang masif.' },
+        { number: 38, symbol: 'Sr', name: 'Stronsium', mass: '87.62', origin: 'supernova', description: 'Memberi warna merah pada kembang api! Terbentuk dalam proses s di bintang masif.' },
+        { number: 39, symbol: 'Y', name: 'Itrium', mass: '88.91', origin: 'supernova', description: 'Logam tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 40, symbol: 'Zr', name: 'Zirkonium', mass: '91.22', origin: 'supernova', description: 'Tahan panas! Terbentuk dalam proses s di bintang masif.' },
+        { number: 41, symbol: 'Nb', name: 'Niobium', mass: '92.91', origin: 'supernova', description: 'Superkonduktor! Terbentuk dalam proses s di bintang masif.' },
+        { number: 42, symbol: 'Mo', name: 'Molibdenum', mass: '95.95', origin: 'supernova', description: 'Penting untuk enzim! Terbentuk dalam proses s di bintang masif.' },
+        { number: 43, symbol: 'Tc', name: 'Teknesium', mass: '98', origin: 'man-made', description: 'Unsur buatan manusia! Tidak ada di alam, dibuat di laboratorium.' },
+        { number: 44, symbol: 'Ru', name: 'Rutenium', mass: '101.1', origin: 'supernova', description: 'Logam platinum group! Terbentuk dalam proses s di bintang masif.' },
+        { number: 45, symbol: 'Rh', name: 'Rodium', mass: '102.9', origin: 'supernova', description: 'Logam paling mahal! Terbentuk dalam proses s di bintang masif.' },
+        { number: 46, symbol: 'Pd', name: 'Paladium', mass: '106.4', origin: 'supernova', description: 'Katalis penting! Terbentuk dalam proses s di bintang masif.' },
+        { number: 47, symbol: 'Ag', name: 'Perak', mass: '107.9', origin: 'supernova', description: 'Konduktor terbaik! Terbentuk dalam proses r di supernova.' },
+        { number: 48, symbol: 'Cd', name: 'Kadmium', mass: '112.4', origin: 'supernova', description: 'Beracun tapi berguna! Terbentuk dalam proses s di bintang masif.' },
+        { number: 49, symbol: 'In', name: 'Indium', mass: '114.8', origin: 'supernova', description: 'Untuk layar sentuh! Terbentuk dalam proses s di bintang masif.' },
+        { number: 50, symbol: 'Sn', name: 'Timah', mass: '118.7', origin: 'supernova', description: 'Anti karat! Terbentuk dalam proses s di bintang masif.' },
+        { number: 51, symbol: 'Sb', name: 'Antimon', mass: '121.8', origin: 'supernova', description: 'Logam semi! Terbentuk dalam proses s di bintang masif.' },
+        { number: 52, symbol: 'Te', name: 'Telurium', mass: '127.6', origin: 'supernova', description: 'Semikonduktor! Terbentuk dalam proses s di bintang masif.' },
+        { number: 53, symbol: 'I', name: 'Iodin', mass: '126.9', origin: 'supernova', description: 'Penting untuk tiroid! Terbentuk dalam proses r di supernova.' },
+        { number: 54, symbol: 'Xe', name: 'Xenon', mass: '131.3', origin: 'supernova', description: 'Gas mulua langka! Terbentuk dalam proses s di bintang masif.' },
+        { number: 55, symbol: 'Cs', name: 'Sesium', mass: '132.9', origin: 'supernova', description: 'Logam alkali paling reaktif! Terbentuk dalam proses s di bintang masif.' },
+        { number: 56, symbol: 'Ba', name: 'Barium', mass: '137.3', origin: 'supernova', description: 'Untuk scan medis! Terbentuk dalam proses s di bintang masif.' },
+        { number: 57, symbol: 'La', name: 'Lantanum', mass: '138.9', origin: 'supernova', description: 'Logam tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 58, symbol: 'Ce', name: 'Serium', mass: '140.1', origin: 'supernova', description: 'Tanah jarang paling melimpah! Terbentuk dalam proses s di bintang masif.' },
+        { number: 59, symbol: 'Pr', name: 'Praseodimium', mass: '140.9', origin: 'supernova', description: 'Tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 60, symbol: 'Nd', name: 'Neodimium', mass: '144.2', origin: 'supernova', description: 'Untuk magnet kuat! Terbentuk dalam proses s di bintang masif.' },
+        { number: 61, symbol: 'Pm', name: 'Prometium', mass: '145', origin: 'man-made', description: 'Unsur buatan manusia! Radioaktif dan tidak stabil di alam.' },
+        { number: 62, symbol: 'Sm', name: 'Samarium', mass: '150.4', origin: 'supernova', description: 'Tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 63, symbol: 'Eu', name: 'Europium', mass: '152.0', origin: 'supernova', description: 'Untuk layar TV! Terbentuk dalam proses s di bintang masif.' },
+        { number: 64, symbol: 'Gd', name: 'Gadolinium', mass: '157.3', origin: 'supernova', description: 'Untuk MRI! Terbentuk dalam proses s di bintang masif.' },
+        { number: 65, symbol: 'Tb', name: 'Terbium', mass: '158.9', origin: 'supernova', description: 'Tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 66, symbol: 'Dy', name: 'Disprosium', mass: '162.5', origin: 'supernova', description: 'Untuk magnet! Terbentuk dalam proses s di bintang masif.' },
+        { number: 67, symbol: 'Ho', name: 'Holmium', mass: '164.9', origin: 'supernova', description: 'Tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 68, symbol: 'Er', name: 'Erbium', mass: '167.3', origin: 'supernova', description: 'Untuk fiber optik! Terbentuk dalam proses s di bintang masif.' },
+        { number: 69, symbol: 'Tm', name: 'Tulium', mass: '168.9', origin: 'supernova', description: 'Tanah jarang paling langka! Terbentuk dalam proses s di bintang masif.' },
+        { number: 70, symbol: 'Yb', name: 'Iterbium', mass: '173.0', origin: 'supernova', description: 'Tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 71, symbol: 'Lu', name: 'Lutesium', mass: '175.0', origin: 'supernova', description: 'Tanah jarang! Terbentuk dalam proses s di bintang masif.' },
+        { number: 72, symbol: 'Hf', name: 'Hafnium', mass: '178.5', origin: 'supernova', description: 'Untuk reaktor nuklir! Terbentuk dalam proses s di bintang masif.' },
+        { number: 73, symbol: 'Ta', name: 'Tantalum', mass: '180.9', origin: 'supernova', description: 'Tahan korosi! Terbentuk dalam proses s di bintang masif.' },
+        { number: 74, symbol: 'W', name: 'Wolfram', mass: '183.8', origin: 'supernova', description: 'Logam dengan titik leleh tertinggi! Terbentuk dalam proses s di bintang masif.' },
+        { number: 75, symbol: 'Re', name: 'Renium', mass: '186.2', origin: 'supernova', description: 'Logam paling langka! Terbentuk dalam proses s di bintang masif.' },
+        { number: 76, symbol: 'Os', name: 'Osmium', mass: '190.2', origin: 'supernova', description: 'Logam terpadat! Terbentuk dalam proses s di bintang masif.' },
+        { number: 77, symbol: 'Ir', name: 'Iridium', mass: '192.2', origin: 'supernova', description: 'Tahan korosi ekstrem! Terbentuk dalam proses s di bintang masif.' },
+        { number: 78, symbol: 'Pt', name: 'Platinum', mass: '195.1', origin: 'supernova', description: 'Logam mulia mahal! Terbentuk dalam proses s di bintang masif.' },
+        { number: 79, symbol: 'Au', name: 'Emas', mass: '196.97', origin: 'merger', description: 'Emas ini tercipta dari tabrakan dua bintang neutron yang spektakuler! Event kosmik yang luar biasa!' },
+        { number: 80, symbol: 'Hg', name: 'Raksa', mass: '200.6', origin: 'supernova', description: 'Logam cair! Terbentuk dalam proses s di bintang masif.' },
+        { number: 81, symbol: 'Tl', name: 'Talium', mass: '204.4', origin: 'supernova', description: 'Logam lunak! Terbentuk dalam proses s di bintang masif.' },
+        { number: 82, symbol: 'Pb', name: 'Timbal', mass: '207.2', origin: 'supernova', description: 'Logam berat! Terbentuk dalam proses s dan r di supernova.' },
+        { number: 83, symbol: 'Bi', name: 'Bismut', mass: '209.0', origin: 'supernova', description: 'Logam radioaktif lemah! Terbentuk dalam proses s di bintang masif.' },
+        { number: 84, symbol: 'Po', name: 'Polonium', mass: '209', origin: 'man-made', description: 'Unsur radioaktif! Ditemukan oleh Marie Curie, sekarang dibuat di laboratorium.' },
+        { number: 85, symbol: 'At', name: 'Astatin', mass: '210', origin: 'man-made', description: 'Unsur paling langka di Bumi! Hanya ada dalam jumlah sangat kecil.' },
+        { number: 86, symbol: 'Rn', name: 'Radon', mass: '222', origin: 'supernova', description: 'Gas radioaktif! Terbentuk dari peluruhan uranium di kerak Bumi.' },
+        { number: 87, symbol: 'Fr', name: 'Fransium', mass: '223', origin: 'man-made', description: 'Unsur buatan manusia! Sangat radioaktif dan tidak stabil.' },
+        { number: 88, symbol: 'Ra', name: 'Radium', mass: '226', origin: 'man-made', description: 'Unsur radioaktif! Ditemukan oleh Marie Curie, sekarang dibuat di laboratorium.' },
+        { number: 89, symbol: 'Ac', name: 'Aktinium', mass: '227', origin: 'man-made', description: 'Unsur buatan manusia! Radioaktif dan langka.' },
+        { number: 90, symbol: 'Th', name: 'Torium', mass: '232.0', origin: 'supernova', description: 'Sumber energi nuklir! Terbentuk dalam proses r di supernova.' },
+        { number: 91, symbol: 'Pa', name: 'Protaktinium', mass: '231.0', origin: 'man-made', description: 'Unsur buatan manusia! Radioaktif dan langka.' },
+        { number: 92, symbol: 'U', name: 'Uranium', mass: '238.0', origin: 'supernova', description: 'Bahan bakar nuklir! Terbentuk dalam proses r di supernova.' },
+        { number: 93, symbol: 'Np', name: 'Neptunium', mass: '237', origin: 'man-made', description: 'Unsur buatan manusia! Ditemukan di reaktor nuklir.' },
+        { number: 94, symbol: 'Pu', name: 'Plutonium', mass: '244', origin: 'man-made', description: 'Unsur buatan manusia! Digunakan untuk senjata nuklir dan reaktor.' },
+        { number: 95, symbol: 'Am', name: 'Amerisium', mass: '243', origin: 'man-made', description: 'Unsur buatan manusia! Digunakan dalam detektor asap.' },
+        { number: 96, symbol: 'Cm', name: 'Kurium', mass: '247', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Marie dan Pierre Curie.' },
+        { number: 97, symbol: 'Bk', name: 'Berkelium', mass: '247', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Berkeley, California.' },
+        { number: 98, symbol: 'Cf', name: 'Kalifornium', mass: '251', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari California.' },
+        { number: 99, symbol: 'Es', name: 'Einsteinium', mass: '252', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Albert Einstein.' },
+        { number: 100, symbol: 'Fm', name: 'Fermium', mass: '257', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Enrico Fermi.' },
+        { number: 101, symbol: 'Md', name: 'Mendelevium', mass: '258', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Dmitri Mendeleev.' },
+        { number: 102, symbol: 'No', name: 'Nobelium', mass: '259', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Alfred Nobel.' },
+        { number: 103, symbol: 'Lr', name: 'Lawrensium', mass: '262', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Lawrence Berkeley National Laboratory.' },
+        { number: 104, symbol: 'Rf', name: 'Ruterfordium', mass: '267', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Ernest Rutherford.' },
+        { number: 105, symbol: 'Db', name: 'Dubnium', mass: '268', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Dubna, Rusia.' },
+        { number: 106, symbol: 'Sg', name: 'Seaborgium', mass: '269', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Glenn T. Seaborg.' },
+        { number: 107, symbol: 'Bh', name: 'Bohrium', mass: '270', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Niels Bohr.' },
+        { number: 108, symbol: 'Hs', name: 'Hasium', mass: '277', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Hesse, Jerman.' },
+        { number: 109, symbol: 'Mt', name: 'Meitnerium', mass: '278', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Lise Meitner.' },
+        { number: 110, symbol: 'Ds', name: 'Darmstadtium', mass: '281', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Darmstadt, Jerman.' },
+        { number: 111, symbol: 'Rg', name: 'Roentgenium', mass: '282', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Wilhelm Röntgen.' },
+        { number: 112, symbol: 'Cn', name: 'Kopernisium', mass: '285', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Nicolaus Copernicus.' },
+        { number: 113, symbol: 'Nh', name: 'Nihonium', mass: '286', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Jepang (Nihon).' },
+        { number: 114, symbol: 'Fl', name: 'Flerovium', mass: '289', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama untuk menghormati Georgy Flyorov.' },
+        { number: 115, symbol: 'Mc', name: 'Muskovium', mass: '290', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Moskow, Rusia.' },
+        { number: 116, symbol: 'Lv', name: 'Livermorium', mass: '293', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Livermore, California.' },
+        { number: 117, symbol: 'Ts', name: 'Tenessin', mass: '294', origin: 'man-made', description: 'Unsur buatan manusia! Diberi nama dari Tennessee, USA.' },
+        { number: 118, symbol: 'Og', name: 'Oganeson', mass: '294', origin: 'man-made', description: 'Unsur buatan manusia! Unsur terberat yang diketahui, diberi nama untuk menghormati Yuri Oganessian.' }
+    ];
+
+    const periodicLayout = [
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 0, 0],
+        [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36],
+        [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54],
+        [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72],
+        [73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90],
+        [91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104, 105, 106, 107, 108],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 109, 110, 111, 112, 113],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 114, 115, 116, 117, 118]
+    ];
+
+    const originNames = {
+        'big-bang': 'Big Bang',
+        'supernova': 'Supernova',
+        'cosmic-ray': 'Sinar Kosmik',
+        'merger': 'Neutron Star Merger',
+        'man-made': 'Man-made',
+        'unknown': 'Unknown'
+    };
+
+    const originColors = {
+        'big-bang': 'origin-big-bang',
+        'supernova': 'origin-supernova',
+        'cosmic-ray': 'origin-cosmic-ray',
+        'merger': 'origin-merger',
+        'man-made': 'origin-man-made',
+        'unknown': 'origin-unknown'
+    };
+
+    function buildPeriodicTable() {
+        const table = document.getElementById('periodicTable');
+        table.innerHTML = ''; // Clear existing content before building
+        
+        periodicLayout.forEach(row => {
+            row.forEach(elementNumber => {
+                const elementDiv = document.createElement('div');
+                
+                if (elementNumber === 0) {
+                    elementDiv.className = 'element empty';
+                } else {
+                    const element = elements.find(e => e.number === elementNumber);
+                    if (element) {
+                        elementDiv.className = `element ${originColors[element.origin]}`;
+                        elementDiv.dataset.symbol = element.symbol; // Store symbol for highlighting
+                        elementDiv.innerHTML = `
+                            <span class="element-number">${element.number}</span>
+                            <span class="element-symbol">${element.symbol}</span>
+                            <span class="element-name">${element.name}</span>
+                            <span class="element-mass">${element.mass}</span>
+                        `;
+                        elementDiv.onclick = () => showElementDetail(element);
+                    }
+                }
+                
+                table.appendChild(elementDiv);
+            });
+        });
+    }
+
+    // Highlight elements from URL parameter
+    function highlightElementsFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const highlightParam = urlParams.get('highlight');
+        
+        if (highlightParam) {
+            const symbolsToHighlight = highlightParam.split(',').map(s => s.trim().toUpperCase());
+            
+            symbolsToHighlight.forEach(symbol => {
+                const elementDivs = document.querySelectorAll('.element');
+                elementDivs.forEach(div => {
+                    const divSymbol = div.dataset.symbol;
+                    if (divSymbol === symbol) {
+                        div.classList.add('highlighted');
+                        // Scroll to first highlighted element
+                        if (symbol === symbolsToHighlight[0]) {
+                            div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                });
+            });
+        }
+    }
+
+    function showElementDetail(element) {
+        document.getElementById('detailSymbol').textContent = element.symbol;
+        document.getElementById('detailName').textContent = element.name;
+        document.getElementById('detailNumber').textContent = element.number;
+        document.getElementById('detailMass').textContent = element.mass;
+        document.getElementById('detailOrigin').textContent = originNames[element.origin];
+        document.getElementById('detailOrigin').className = `origin-badge ${originColors[element.origin]}`;
+        document.getElementById('detailDescription').textContent = element.description;
+        
+        document.getElementById('overlay').classList.add('active');
+        document.getElementById('elementDetail').classList.add('active');
+    }
+
+    function closeDetail() {
+        document.getElementById('overlay').classList.remove('active');
+        document.getElementById('elementDetail').classList.remove('active');
+    }
+
+    document.getElementById('overlay').onclick = closeDetail;
+
+    // Build table on load
+    buildPeriodicTable();
+    
+    // Highlight elements from URL parameter
+    highlightElementsFromURL();
+
+    // Stardust Connect Lines
+    const stardustCanvas = document.getElementById('stardustCanvas');
+    let activeLine = null;
+    let dashAnimationAdded = false;
+
+    function drawStardustLine(element, origin) {
+        // Only draw lines if in dark mode (Futuristic style)
+        if (!document.body.classList.contains('dark-mode')) return;
+        
+        // Find legend item for this origin
+        const targetLegend = document.querySelector(`.legend-item[data-origin="${origin}"]`);
+        
+        if (!targetLegend) return;
+        
+        // Get positions
+        const elementRect = element.getBoundingClientRect();
+        const legendRect = targetLegend.getBoundingClientRect();
+        
+        const startX = elementRect.left + elementRect.width / 2;
+        const startY = elementRect.top + elementRect.height / 2;
+        const endX = legendRect.left + legendRect.width / 2;
+        const endY = legendRect.top + legendRect.height / 2;
+        
+        // Get color based on origin
+        const colors = {
+            'big-bang': '#ff6b6b',
+            'supernova': '#4ecdc4',
+            'cosmic-ray': '#a8e6cf',
+            'merger': '#ffd93d',
+            'man-made': '#6c5ce7',
+            'unknown': '#95a5a6'
+        };
+        
+        const lineColor = colors[origin] || '#ffffff';
+        
+        // Add dash animation only once
+        if (!dashAnimationAdded) {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes dash {
+                    to {
+                        stroke-dashoffset: -10;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            dashAnimationAdded = true;
+        }
+        
+        // Create line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', startX);
+        line.setAttribute('y1', startY);
+        line.setAttribute('x2', endX);
+        line.setAttribute('y2', endY);
+        line.setAttribute('stroke', lineColor);
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-opacity', '0.6');
+        line.setAttribute('stroke-dasharray', '5,5');
+        line.style.animation = 'dash 1s linear infinite';
+        
+        stardustCanvas.appendChild(line);
+        activeLine = line;
+    }
+
+    function clearStardustLine() {
+        if (activeLine) {
+            stardustCanvas.removeChild(activeLine);
+            activeLine = null;
+        }
+    }
+
+    // Add hover events to elements
+    document.addEventListener('mouseover', (e) => {
+        const element = e.target.closest('.element');
+        if (element && !element.classList.contains('empty')) {
+            const elementNumber = parseInt(element.querySelector('.element-number')?.textContent);
+            const elementData = elements.find(el => el.number === elementNumber);
+            if (elementData) {
+                drawStardustLine(element, elementData.origin);
+            }
+        }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const element = e.target.closest('.element');
+        if (element) {
+            clearStardustLine();
+        }
+    });
+</script>
+{% endblock %}
+</toolcall_result>
