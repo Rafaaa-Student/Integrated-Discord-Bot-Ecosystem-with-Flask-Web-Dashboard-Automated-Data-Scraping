@@ -10,73 +10,49 @@ Bot Discord interaktif yang menggabungkan **gamifikasi aksi hijau**, **web scrap
 
 ## 📋 Fitur Utama
 
+### 💰 Sistem Ekonomi & Gamifikasi (Dual-Currency)
+Proyek ini menggunakan sistem ekonomi RPG untuk memotivasi interaksi:
+
+- **XP (Reputation)**: Poin permanen yang menentukan Level dan Badge. Tidak bisa berkurang.
+- **Gold (Currency)**: Mata uang yang bisa dibelanjakan di `$Shop` untuk membeli item atau bermain `$Gacha`.
+- **$Poin**: Cek saldo Gold dan akumulasi XP kamu.
+- **$Shop**: Lihat daftar item, badge eksklusif, atau booster AI yang bisa dibeli.
+- **$Buy <item>**: Beli item menggunakan Gold.
+- **$Gacha**: Gunakan Gold untuk mendapatkan item random (Booster, Badge, atau ampas).
+- **$Select <badge>**: Gunakan badge yang sudah dibeli dari inventory untuk ditampilkan di profil.
+
 ### 🌱 Fitur Aksi Hijau (Green Action System)
-Bot ini dirancang untuk memotivasi pengguna melakukan tindakan ramah lingkungan dengan sistem poin dan level:
+Bot ini dirancang untuk memotivasi pengguna melakukan tindakan ramah lingkungan:
 
-- **$Green_Action**: Dapatkan tips hijau harian + 1 poin (max 3x sehari)
-- **$Action <aksi>**: Catat aksi hijau (misal: "Menanam pohon") + 5 poin
-- **$Story <cerita>**: Cerita storytelling 30+ kata tentang aktivitas hijau (poin sesuai aksi yang terdeteksi)
-- **$Points**: Lihat total poin dan level badge kamu
-- **$Leaderboard**: Ranking top 5 pengguna dengan poin tertinggi
-- **$Levelbadge**: Lihat daftar badge dari level 1-100
-- **$Add_Action <aksi>**: Usulkan aksi hijau baru
-- **$Event** (Admin): Mulai event eksklusif dengan aksi spesifik
-- **$Claim <cerita>**: Klaim event eksklusif (hanya 1 orang pertama) + 25 poin
-- **$Exclusive_Event <objek>** (Admin): Buat event eksklusif berbasis gambar (validasi AI Gemini) + 20 poin untuk pemenang
-- **$Claim_Exclusive**: Klaim event eksklusif dengan upload gambar (validasi AI, first-come-first-served, 2 menit cooldown)
-- **$Reset_Tips** (Admin): Reset jatah poin harian pengguna
-- **$Kategori**: Lihat kategori sampah (organik/anorganik/berbahaya)
-- **$Pilah <sampah>**: Cek kategori jenis sampah
-- **$Tambah_Kategori**: Tambah jenis sampah baru ke kategori
-- **$Scan**: Upload gambar untuk klasifikasi AI (Target/Neutral/Distraction) + 10 poin jika confidence > 90%
-
-### 🕸️ Fitur Web Scraping
-Mengambil data dari internet untuk memberikan rekomendasi dan informasi:
-
-- **$Quotes**: Ambil quote inspiratif acak dari website
-- **$Books**: Rekomendasi buku random dengan cooldown 30 menit (+ 2 poin)
-- **$BookDescription**: Buku acak dari database lokal dengan sinopsis lengkap
-- **$FindBooks <keyword>**: Cari buku berdasarkan judul atau deskripsi
-- **$BooksAdmin** (Admin): Mode diagnostik untuk cek status koneksi scraping
-- **$TrueAdminBookDescription <jumlah>** (Owner): Scrape & simpan buku ke database JSON (hanya buku yang belum ada, cek duplikat otomatis)
-- **Auto-Scraping**: Scrap otomatis 10 buku baru setiap 12 jam (hanya yang belum ada di database)
-
-### 🎮 Fitur Hiburan Umum
-Perintah tambahan untuk interaksi santai:
-
-- **$Halo**: Sapaan dari bot
-- **$Goodbye**: Emoji senyuman
-- **$Emoji**: Emoji random
-- **$Dadu**: Roll dadu 1-6 dengan respons unik
-- **$Koin**: Lempar koin (Kepala/Ekor)
-- **$Passgen <jumlah>**: Generate password acak (4-64 karakter)
-- **$Menambahkan <angka1> <angka2>**: Kalkulator penjumlahan
-- **$Ulang <jumlah> <kata>**: Ulangi kata N kali
-- **$Bebek**: Gambar bebek random
-- **$Rubah**: Gambar rubah random
+- **$Green_Action**: Tips hijau harian + Gold & XP (max 3x sehari)
+- **$Action <aksi>**: Catat aksi hijau (misal: "Menanam pohon") + Gold & XP
+- **$Story <cerita>**: Cerita storytelling 30+ kata tentang aktivitas hijau (bonus Gold & XP sesuai deteksi AI)
+- **$Bug <laporan>**: (Khusus Admin Server) Laporkan bug/error langsung ke Project Admin untuk dilihat di dashboard website.
+- **$Leaderboard**: Ranking top 5 pengguna dengan XP (Reputation) tertinggi.
 
 ### 🤖 Fitur AI Generative
-AI powered by Google Gemini 2.5 Flash untuk tanya jawab:
+AI powered by **Google Gemini 2.0 Flash Lite** untuk interaksi cerdas:
 
-- **$Zenn <pertanyaan>**: Tanya ke AI Zenn VII tentang lingkungan (Limit: 25/hari untuk user, unlimited untuk admin)
-- **$Zenn_clear**: Hapus riwayat percakapan dengan AI
-- AI mengingat 5 percakapan terakhir untuk konteks yang lebih personal
-- Respon edukatif dengan gaya santai dan ramah lingkungan
+- **$Zenn <pertanyaan>**: Tanya ke AI Zenn VII tentang lingkungan, sains, atau umum. (Limit: 10/menit per guild untuk user biasa, unlimited admin).
+- **Stardust Connect**: Visualisasi jaringan pikiran AI di website (Vis.js) dengan tema hutan yang adaptif.
+- **Booster AI**: Gunakan Gold untuk membeli booster yang meningkatkan limit penggunaan AI harian.
 
 ### 🌐 Fitur Website Dashboard
-Dashboard interaktif untuk memantau data bot:
+Dashboard interaktif dengan desain premium untuk memantau data bot:
 
-- **Discord OAuth2 Login**: Login/logout dengan akun Discord
-- **Role-based Access Control**: Guest, User, dan Admin roles
-- **AI Chat Interface**: Chat dengan Zenn VII AI langsung dari web (limit 25/hari untuk user, unlimited admin)
-- **Real-time Updates**: SocketIO untuk update data live tanpa refresh
-- **Home**: Statistik total users, poin hijau, koleksi buku dengan grafik visual (Chart.js)
-- **Leaderboard**: Ranking poin hijau users
-- **Books**: Lihat koleksi buku dari database
-- **Search Books**: Cari buku berdasarkan keyword
-- **Admin Controls**: Kirim pesan ke bot Discord, trigger scraping buku, buat event baru
-- **Dark/Light Mode Toggle**: Switch tema dengan efek 3D sphere di dark mode
-- **Interactive Features**: Emoji rain, ganti background hero section, fakta random dengan efek 3D
+- **Adaptive UI Design**: 
+  - **Minimalist Light Mode**: Tema bersih dan cerah yang menyatu dengan alam.
+  - **Futuristic Dark Mode**: Tema Sci-Fi dengan Glassmorphism, background bintang parallax, dan efek tata surya.
+- **Global Visual Effects**: 
+  - **Background Stars**: Bintik-bintik putih yang berkelap-kelip dan bergerak (parallax) di semua halaman (Dark Mode).
+  - **Magical Stardust Trail**: Efek partikel bintang yang mengikuti kursor mouse dengan animasi halus.
+- **Discord OAuth2 Login**: Login aman menggunakan akun Discord kamu.
+- **Profile & Achievement**: Lihat kartu pencapaian, saldo XP/Gold, dan pilih badge yang ingin dipamerkan.
+- **Leaderboard**: Ranking XP (Reputation) global.
+- **Chemical (Periodic Table)**: Tabel periodik interaktif dengan informasi asal-usul unsur (Big Bang, Supernova, dll) dan efek Stardust Connect.
+- **Books & Search**: Jelajahi koleksi buku hasil scraping dengan UI yang modern.
+- **Admin Dashboard**: Melihat laporan bug dari user, manajemen AI usage, dan kontrol bot lainnya.
+- **Real-time Updates**: Integrasi SocketIO untuk sinkronisasi data instan antara bot dan website.
 
 ### 🔌 Sistem API Internal
 Bot menjalankan API server internal di `localhost:8080` untuk terintegrasi dengan website:
@@ -88,18 +64,20 @@ Bot menjalankan API server internal di `localhost:8080` untuk terintegrasi denga
 
 ---
 
-## 📊 Sistem Level & Badge
+## 📊 Sistem Level & Badge (XP vs Gold)
 
-Bot menggunakan sistem level berbasis poin hijau:
+Proyek ini memisahkan antara reputasi (XP) dan daya beli (Gold):
 
-| Level | Badge | Poin |
-|-------|-------|------|
-| 1 | 🌱 Newbie | 0-4 |
-| 5 | 🍃 Fresh Starter | 20-24 |
-| 10 | 🌿 Green Explorer | 45-49 |
-| 30 | 🌲 Eco Enthusiast | 145-149 |
-| 50 | 🌍 Environmental Hero | 245-249 |
-| 100 | 🏆 Legendary Green Champion | 495+ |
+| Level | Badge | XP Required | Deskripsi |
+|-------|-------|-------------|-----------|
+| 1 | 🌱 Newbie | 0 | Awal perjalanan hijau. |
+| 10 | 🌿 Green Explorer | 100 | Mulai konsisten beraksi. |
+| 30 | 🌲 Eco Enthusiast | 500 | Menjadi inspirasi lingkungan. |
+| 50 | 🌍 Environmental Hero | 1000 | Pahlawan bumi sejati. |
+| 100 | 🏆 Legendary Champion | 5000 | Legenda konservasi alam. |
+
+- **XP**: Didapat dari `$Green_Action`, `$Action`, dan `$Story`. Digunakan untuk naik level.
+- **Gold**: Didapat bersamaan dengan XP. Digunakan untuk belanja di `$Shop` atau main `$Gacha`.
 
 ---
 
@@ -196,11 +174,13 @@ Discord Bot (BOT.py)           Website Dashboard (Flask)
 3. **Website Flask** sebagai interface untuk kontrol bot dan melihat data
 4. **Database SQLite** menyimpan data buku, percakapan AI, dan event eksklusif
 
-### Database Schema:
-- **books**: Koleksi buku dari web scraping (id, judul, harga, deskripsi, url, created_at)
-- **conversations**: Riwayat percakapan AI Zenn VII (id, user_id, role, content, created_at)
-- **ai_usage**: Tracking limit penggunaan AI per user (user_id, daily_count, last_ask_date)
-- **exclusive_events**: Event eksklusif berbasis gambar (id, target_object, is_active, winner_id, created_at, closed_at)
+### Database Schema (SQLite):
+- **books**: Koleksi buku hasil scraping (judul, harga, deskripsi, url).
+- **ai_usage**: Tracking limit penggunaan AI per user dan guild.
+- **bug_reports**: Laporan error dari user via command `$Bug`.
+- **inventory**: Menyimpan item dan badge yang sudah dibeli oleh user.
+- **ai_boosts**: Status booster AI yang aktif untuk menambah limit harian.
+- **selected_badge**: Badge yang sedang aktif dipakai oleh user untuk profil.
 
 ---
 
@@ -208,30 +188,22 @@ Discord Bot (BOT.py)           Website Dashboard (Flask)
 
 ```
 Project_VII/
-├── BOT.py                    # Main bot Discord dengan API server
-├── Brain.py                  # AI image classification module (TensorFlow/Keras)
-├── database.py               # SQLite database module untuk buku
-├── migrate_json_to_sqlite.py # Script migrasi data buku dari JSON ke SQLite
+├── BOT.py                    # Main bot Discord & API Server (8080)
+├── Brain.py                  # Modul AI Gemini & Pembersihan Teks
+├── database.py               # Definisi tabel SQLite & Database Manager
+├── poin_hijau.json          # Database ekonomi (XP & Gold) - format JSON
+├── books.db                 # Database utama SQLite (Buku, Bug, Inventory, dll)
 ├── website/
-│   ├── app.py               # Flask web application
-│   ├── templates/           # HTML templates
-│   │   ├── base.html
-│   │   ├── home.html
-│   │   ├── function.html
-│   │   ├── chat.html
-│   │   ├── leaderboard.html
-│   │   ├── books.html
-│   │   ├── search_books.html
-│   │   └── search_results.html
+│   ├── app.py               # Flask Web Application (5000)
+│   ├── templates/           # UI Premium (Adaptive Themes)
+│   │   ├── base.html        # Global Stars & Cursor Trail
+│   │   ├── home.html        # Dashboard Stats
+│   │   ├── profile.html     # Achievement Card & Inventory
+│   │   ├── chemical.html    # Periodic Table & Stardust Connect
+│   │   ├── function.html    # Vis.js AI Visualization
+│   │   └── ...              # Halaman pendukung lainnya
 │   └── static/
-│       └── style.css
-├── poin_hijau.json          # Database poin users (JSON)
-├── books.db                 # Database SQLite untuk koleksi buku
-├── database_buku_log.json.backup # Backup database buku lama (setelah migrasi)
-├── .env                     # Environment variables (DISCORD_TOKEN)
-├── keras_model.h5           # AI model untuk klasifikasi gambar
-├── labels.txt               # Label classification AI
-└── requirements.txt         # Python dependencies
+│       └── style.css        # Styling Global & Glassmorphism
 ```
 
 ---
@@ -274,18 +246,13 @@ Project_VII/
 ## 📝 Credits
 
 Dibuat oleh anak kelas 7 SMP (13 tahun) dengan ilmu:
-- Web Scraping (BeautifulSoup)
-- Database (JSON & SQLite)
-- Bot Discord (discord.py)
-- API Internal (aiohttp)
-- Web Dashboard (Flask + Chart.js)
-- Real-time Communication (Flask-SocketIO)
-- AI/ML (TensorFlow/Keras - Image Classification)
-- AI Generative (Google Gemini 2.5 Flash)
-- Discord OAuth2 Authentication
-- Environment Variables (python-dotenv)
-- Gamifikasi & Interaksi
-- CSS 3D Effects & Dark Mode
-- HTML/CSS/JavaScript
+- **AI Generative**: Google Gemini 2.0 Flash Lite Integration.
+- **Visual & UI**: Premium Adaptive Theme (Light/Dark), Glassmorphism, CSS Particles.
+- **Interactive JS**: Vis.js for AI visualization & Stardust Connect.
+- **Economy Engine**: Dual-Currency System (XP & Gold) via JSON.
+- **Backend**: Flask (Python) with SocketIO real-time sync.
+- **Bot Engine**: Discord.py with internal API server (aiohttp).
+- **Database**: Advanced SQLite management (Inventory, Bug Reporting, etc).
+- **Security**: Discord OAuth2 & Environment Variables.
 
-🌿 **Zenn' VII** - Membangun masa depan hijau dengan teknologi!
+🌿 **Bot/AI Zenn' VII** - Membangun masa depan hijau dengan teknologi!
