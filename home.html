@@ -5,385 +5,232 @@
 {% block content %}
 <style>
     .hero-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 80px 0;
-        border-radius: 15px;
-        margin-bottom: 30px;
-        position: relative;
+        padding: 72px 36px;
+        border-radius: 26px;
+        color: #f5f9f8;
+        background: linear-gradient(120deg, rgba(17, 116, 98, 0.9), rgba(30, 72, 133, 0.82));
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        box-shadow: 0 18px 40px rgba(22, 56, 53, 0.25);
         overflow: hidden;
+        position: relative;
     }
-    
-    .hero-section::before {
-        content: '';
+    .hero-section::after {
+        content: "";
         position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-        animation: pulse 4s ease-in-out infinite;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-    }
-    
-    .hero-content {
-        position: relative;
-        z-index: 1;
-    }
-    
-    .profile-image {
-        width: 150px;
-        height: 150px;
+        width: 220px;
+        height: 220px;
         border-radius: 50%;
-        border: 5px solid white;
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 60px;
-        margin: 0 auto 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        right: -70px;
+        top: -70px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.35), transparent 70%);
+        animation: pulseOrb 6s ease-in-out infinite;
     }
-    
-    .skill-bar {
-        height: 25px;
-        border-radius: 12px;
-        background: #e9ecef;
-        margin-bottom: 15px;
-        overflow: hidden;
+    .hero-logo {
+        width: 95px;
+        height: 95px;
+        border-radius: 22px;
+        border: 2px solid rgba(255, 255, 255, 0.55);
+        object-fit: cover;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.23);
+        animation: floatUp 4.5s ease-in-out infinite;
     }
-    
-    .skill-progress {
+    .feature-tile {
         height: 100%;
+        border-radius: 18px;
+        border: 1px solid rgba(87, 121, 131, 0.2);
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 10px 24px rgba(13, 57, 58, 0.12);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .feature-tile:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 30px rgba(11, 54, 58, 0.18);
+    }
+    .kpi-badge {
+        background: rgba(15, 132, 118, 0.12);
+        border: 1px solid rgba(15, 132, 118, 0.3);
         border-radius: 12px;
-        display: flex;
+        padding: 14px 16px;
+    }
+    .timeline-item {
+        position: relative;
+        padding-left: 30px;
+        margin-bottom: 16px;
+    }
+    .timeline-item::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 7px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #0a8d7e;
+        box-shadow: 0 0 0 6px rgba(10, 141, 126, 0.2);
+    }
+    .timeline-item::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 24px;
+        width: 2px;
+        height: calc(100% + 8px);
+        background: rgba(10, 141, 126, 0.25);
+    }
+    .timeline-item:last-child::after { display: none; }
+    .social-chip {
+        display: inline-flex;
         align-items: center;
-        padding-left: 15px;
-        color: white;
-        font-weight: bold;
-        transition: width 1s ease-in-out;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.76);
+        border: 1px solid rgba(95, 126, 132, 0.28);
     }
-    
-    .floating-element {
-        animation: float 3s ease-in-out infinite;
+    @keyframes pulseOrb {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.12); opacity: 0.75; }
     }
-    
-    @keyframes float {
+    @keyframes floatUp {
         0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-20px); }
-    }
-    
-    .card-hover:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        transition: all 0.3s ease;
-    }
-    
-    .typing-effect {
-        border-right: 3px solid #667eea;
-        animation: blink 0.7s infinite;
-    }
-    
-    @keyframes blink {
-        0%, 100% { border-color: transparent; }
-        50% { border-color: #667eea; }
-    }
-    
-    .emoji-rain {
-        position: fixed;
-        top: -50px;
-        animation: fall linear forwards;
-        font-size: 30px;
-        pointer-events: none;
-        z-index: 9999;
-    }
-    
-    @keyframes fall {
-        to {
-            transform: translateY(100vh) rotate(360deg);
-        }
+        50% { transform: translateY(-8px); }
     }
 </style>
 
-<!-- Hero Section -->
-<div class="hero-section">
-    <div class="container hero-content text-center">
-        <div class="profile-image floating-element">👨‍💻</div>
-        <h1 class="display-4 fw-bold mb-3">Raffasya Azka Alfarabi</h1>
-        <p class="lead mb-4">🎓 Kelas 7 SMP | 🏫 SMP Al Kautsar Bandar Lampung | 🇮🇩 Indonesia</p>
-        <p class="mb-4">Young Developer & Tech Enthusiast</p>
-        <div class="d-flex justify-content-center gap-3">
-            <a href="#about" class="btn btn-light btn-lg">Tentang Saya</a>
-            <a href="#projects" class="btn btn-outline-light btn-lg">Proyek</a>
+<section class="hero-section fade-up mb-4">
+    <div class="row align-items-center g-4 position-relative">
+        <div class="col-lg-8">
+            <div class="social-chip mb-3">Portfolio & AI Ecosystem</div>
+            <h1 class="display-5 fw-bold mb-3">Raffasya Azka Alfarabi</h1>
+            <p class="lead mb-2">Kelas 7 SMP - SMP Al Kautsar Bandar Lampung</p>
+            <p class="mb-3">Membangun website, Discord bot, dan sistem AI bertema lingkungan dengan pendekatan modern dan interaktif.</p>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="#fitur-utama" class="btn btn-light btn-lg">Lihat Fitur</a>
+                <a href="/function" class="btn btn-outline-light btn-lg">Masuk Dashboard</a>
+                <a href="/chat" class="btn btn-outline-light btn-lg">Chat Zenn VII</a>
+            </div>
+        </div>
+        <div class="col-lg-4 text-lg-end text-center">
+            <img src="/assets/ba07bac9ff4702a37467a11279ce768b.jpg" alt="Zenn Logo" class="hero-logo">
         </div>
     </div>
-</div>
+    <div class="row mt-4 g-3">
+        <div class="col-md-4">
+            <div class="kpi-badge"><strong>Email:</strong><br>raffasya.azkaalfarabi@gmail.com</div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-badge"><strong>Fokus:</strong><br>AI + Discord Bot + Flask</div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-badge"><strong>Misi:</strong><br>Edukasi lingkungan lewat teknologi</div>
+        </div>
+    </div>
+</section>
 
-<!-- About Section -->
-<div id="about" class="row mb-5">
-    <div class="col-md-12">
-        <div class="card card-hover">
-            <div class="card-header bg-primary text-white">
-                <h2 class="mb-0">👋 Tentang Saya</h2>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h4>Halo! Saya Raffasya 👋</h4>
-                        <p>Saya adalah siswa kelas 7 SMP yang passionate dengan teknologi dan programming. Meskipun masih muda, saya sudah belajar banyak hal keren:</p>
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item">🤖 Membuat bot Discord interaktif</li>
-                            <li class="list-group-item">🌐 Web scraping dan data collection</li>
-                            <li class="list-group-item">💻 Programming dengan Python</li>
-                            <li class="list-group-item">🎨 Web development dengan Flask</li>
-                            <li class="list-group-item">📊 Data visualization dengan Chart.js</li>
+<section id="fitur-utama" class="fade-up mb-4">
+    <div class="card glass-card">
+        <div class="card-header text-white"><h2 class="mb-0">Fitur Utama Ekosistem Zenn VII</h2></div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6 col-xl-4">
+                    <div class="feature-tile p-3">
+                        <h5>AI Chat (Gemini 2.5 Flash)</h5>
+                        <p class="mb-2">Chat kontekstual dengan memory percakapan dan batas kuota harian untuk menjaga penggunaan.</p>
+                        <ul class="mb-0">
+                            <li>Riwayat percakapan tersimpan di database</li>
+                            <li>Respons lebih rapi dan terstruktur</li>
                         </ul>
                     </div>
-                    <div class="col-md-6">
-                        <h4>📍 Lokasi</h4>
-                        <div class="alert alert-info">
-                            <strong>🏫 Sekolah:</strong> SMP Al Kautsar Bandar Lampung<br>
-                            <strong>🌍 Negara:</strong> Indonesia<br>
-                            <strong>🎯 Fokus:</strong> Pembelajaran teknologi & inovasi
-                        </div>
-                        <h4 class="mt-4">🎯 Visi</h4>
-                        <p class="text-muted">"Membangun masa depan hijau dengan teknologi dan terus belajar hal baru setiap hari!"</p>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <div class="feature-tile p-3">
+                        <h5>Scan Sampah AI</h5>
+                        <p class="mb-2">Model Keras/TensorFlow klasifikasi sampah, lalu Gemini memberi penjelasan yang variatif.</p>
+                        <ul class="mb-0">
+                            <li>Confidence score real-time</li>
+                            <li>Sistem poin aksi hijau</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <div class="feature-tile p-3">
+                        <h5>Leaderboard Hijau</h5>
+                        <p class="mb-2">Papan peringkat user paling aktif mengumpulkan poin lingkungan.</p>
+                        <ul class="mb-0">
+                            <li>Top user berdasarkan poin</li>
+                            <li>Motivasi gamifikasi komunitas</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <div class="feature-tile p-3">
+                        <h5>Library + Search Buku</h5>
+                        <p class="mb-2">Data buku disimpan di SQLite, bisa dicari via website dan bot Discord.</p>
+                        <ul class="mb-0">
+                            <li>Web scraping terjadwal/admin trigger</li>
+                            <li>Pencarian judul/deskripsi</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <div class="feature-tile p-3">
+                        <h5>Admin Control Center</h5>
+                        <p class="mb-2">Admin dapat kirim pesan ke bot, trigger scraping, dan trigger event dari dashboard.</p>
+                        <ul class="mb-0">
+                            <li>Route khusus dengan autentikasi</li>
+                            <li>Feedback hasil aksi langsung</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <div class="feature-tile p-3">
+                        <h5>Realtime Dashboard</h5>
+                        <p class="mb-2">SocketIO + chart statistik untuk update data user dan poin secara live.</p>
+                        <ul class="mb-0">
+                            <li>Visual data dengan Chart.js</li>
+                            <li>Sinkron web-bot</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<!-- Skills Section -->
-<div class="row mb-5">
-    <div class="col-md-12">
-        <div class="card card-hover">
-            <div class="card-header bg-success text-white">
-                <h2 class="mb-0">💪 Keahlian & Skills</h2>
+<section class="fade-up mb-4">
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card glass-card h-100">
+                <div class="card-header text-white"><h3 class="mb-0">Tentang Creator</h3></div>
+                <div class="card-body">
+                    <p>Halo, saya <strong>Raffasya Azka Alfarabi</strong>, siswa kelas 7 SMP di <strong>SMP Al Kautsar Bandar Lampung</strong>. Saya membangun proyek ini sebagai ruang belajar AI, web, dan otomasi bot.</p>
+                    <p class="mb-1"><strong>Email:</strong> raffasya.azkaalfarabi@gmail.com</p>
+                    <p class="mb-0"><strong>Minat:</strong> Programming, AI, Cloud Bot, dan proyek digital bertema lingkungan.</p>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5>Python Programming</h5>
-                        <div class="skill-bar">
-                            <div class="skill-progress bg-primary" style="width: 85%;">85%</div>
-                        </div>
-                        
-                        <h5>Discord Bot Development</h5>
-                        <div class="skill-bar">
-                            <div class="skill-progress bg-success" style="width: 90%;">90%</div>
-                        </div>
-                        
-                        <h5>Web Scraping</h5>
-                        <div class="skill-bar">
-                            <div class="skill-progress bg-info" style="width: 80%;">80%</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>Flask Web Development</h5>
-                        <div class="skill-bar">
-                            <div class="skill-progress bg-warning" style="width: 75%;">75%</div>
-                        </div>
-                        
-                        <h5>Database Management (JSON)</h5>
-                        <div class="skill-bar">
-                            <div class="skill-progress bg-danger" style="width: 70%;">70%</div>
-                        </div>
-                        
-                        <h5>API Development</h5>
-                        <div class="skill-bar">
-                            <div class="skill-progress bg-secondary" style="width: 65%;">65%</div>
-                        </div>
-                    </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card glass-card h-100">
+                <div class="card-header text-white"><h3 class="mb-0">Roadmap Fitur</h3></div>
+                <div class="card-body">
+                    <div class="timeline-item"><strong>Core AI</strong><br><small>Gemini chat + Keras classifier + memory percakapan.</small></div>
+                    <div class="timeline-item"><strong>Community Layer</strong><br><small>Leaderboard poin, command interaktif, dan edukasi lingkungan.</small></div>
+                    <div class="timeline-item"><strong>Ops Dashboard</strong><br><small>Admin trigger command/scraping dari web dengan monitoring visual.</small></div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Projects Section -->
-<div id="projects" class="row mb-5">
-    <div class="col-md-12">
-        <div class="card card-hover">
-            <div class="card-header bg-warning text-dark">
-                <h2 class="mb-0">🚀 Proyek Saya</h2>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-4">
-                        <div class="card border-primary">
-                            <div class="card-body">
-                                <h5 class="card-title">🤖 Bot RF' VII</h5>
-                                <p class="card-text">Bot Discord interaktif dengan fitur:</p>
-                                <ul>
-                                    <li>✅ Gamifikasi aksi hijau</li>
-                                    <li>✅ Web scraping buku</li>
-                                    <li>✅ Dashboard website</li>
-                                    <li>✅ Auto-scraping otomatis</li>
-                                </ul>
-                                <a href="/function" class="btn btn-primary">Lihat Dashboard</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-4">
-                        <div class="card border-success">
-                            <div class="card-body">
-                                <h5 class="card-title">🌐 Website Dashboard</h5>
-                                <p class="card-text">Dashboard interaktif dengan:</p>
-                                <ul>
-                                    <li>✅ Statistik visual (Chart.js)</li>
-                                    <li>✅ Admin controls</li>
-                                    <li>✅ Search books</li>
-                                    <li>✅ Leaderboard</li>
-                                </ul>
-                                <a href="/function" class="btn btn-success">Coba Fitur</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Interactive Section -->
-<div class="row mb-5">
-    <div class="col-md-12">
-        <div class="card card-hover">
-            <div class="card-header bg-info text-white">
-                <h2 class="mb-0">🎮 Fitur Interaktif</h2>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 text-center mb-3">
-                        <button onclick="createEmojiRain()" class="btn btn-lg btn-outline-primary">
-                            🎉 Emoji Rain
-                        </button>
-                    </div>
-                    <div class="col-md-4 text-center mb-3">
-                        <button onclick="changeBackground()" class="btn btn-lg btn-outline-success">
-                            🎨 Ganti Background
-                        </button>
-                    </div>
-                    <div class="col-md-4 text-center mb-3">
-                        <button onclick="showRandomFact()" class="btn btn-lg btn-outline-warning">
-                            💡 Fakta Random
-                        </button>
-                    </div>
-                </div>
-                <div id="fact-display" class="mt-3 text-center" style="display: none;">
-                    <div class="alert alert-info">
-                        <h5 id="fact-text"></h5>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Contact Section -->
-<div class="row mb-5">
-    <div class="col-md-12">
-        <div class="card card-hover">
-            <div class="card-header bg-dark text-white">
-                <h2 class="mb-0">📬 Hubungi Saya</h2>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h4>📧 Email</h4>
-                        <p class="text-muted">raffasya.azkaalfarabi@gmail.com</p>
-                        
-                        <h4>🏫 Sekolah</h4>
-                        <p class="text-muted">SMP Al Kautsar Bandar Lampung</p>
-                        
-                        <h4>🌍 Lokasi</h4>
-                        <p class="text-muted">Indonesia</p>
-                    </div>
-                    <div class="col-md-6">
-                        <h4>🎯 Minat</h4>
-                        <p class="text-muted">Programming, AI, Web Development, Robotics</p>
-                        
-                        <h4>📚 Belajar</h4>
-                        <p class="text-muted">Selalu ingin belajar teknologi baru!</p>
-                        
-                        <h4>💡 Motto</h4>
-                        <p class="text-muted">"Usia bukan penghalang untuk berinovasi!"</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Emoji Rain Effect
-    function createEmojiRain() {
-        const emojis = ['🎉', '🚀', '💻', '🌟', '🎨', '🔥', '💡', '🎮'];
-        for (let i = 0; i < 20; i++) {
-            setTimeout(() => {
-                const emoji = document.createElement('div');
-                emoji.className = 'emoji-rain';
-                emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-                emoji.style.left = Math.random() * 100 + 'vw';
-                emoji.style.animationDuration = (Math.random() * 3 + 2) + 's';
-                document.body.appendChild(emoji);
-                
-                setTimeout(() => emoji.remove(), 5000);
-            }, i * 100);
-        }
-    }
-    
-    // Change Background Color
-    function changeBackground() {
-        const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
-        document.querySelector('.hero-section').style.background = 
-            `linear-gradient(135deg, ${randomColor} 0%, ${colors[Math.floor(Math.random() * colors.length)]} 100%)`;
-    }
-    
-    // Random Facts
-    const facts = [
-        "Saya belajar programming sejak kelas 6 SD!",
-        "Bot RF' VII sudah memiliki ratusan user!",
-        "Saya bisa scraping data dari website dalam hitungan detik!",
-        "Website ini dibuat dengan Flask dan Bootstrap!",
-        "Saya suka belajar hal baru setiap hari!",
-        "Python adalah bahasa pemrograman favorit saya!",
-        "Saya ingin menjadi software engineer di masa depan!",
-        "Teknologi bisa membuat dunia lebih baik!"
-    ];
-    
-    function showRandomFact() {
-        const factDisplay = document.getElementById('fact-display');
-        const factText = document.getElementById('fact-text');
-        const randomFact = facts[Math.floor(Math.random() * facts.length)];
-        
-        factText.textContent = randomFact;
-        factDisplay.style.display = 'block';
-        
-        setTimeout(() => {
-            factDisplay.style.display = 'none';
-        }, 5000);
-    }
-    
-    // Animate skill bars on scroll
     document.addEventListener('DOMContentLoaded', function() {
-        const skillBars = document.querySelectorAll('.skill-progress');
-        skillBars.forEach(bar => {
-            const width = bar.style.width;
-            bar.style.width = '0%';
-            setTimeout(() => {
-                bar.style.width = width;
-            }, 500);
+        const blocks = document.querySelectorAll('.fade-up');
+        blocks.forEach((el, index) => {
+            setTimeout(() => el.classList.add('visible'), 90 * (index + 1));
         });
     });
 </script>
