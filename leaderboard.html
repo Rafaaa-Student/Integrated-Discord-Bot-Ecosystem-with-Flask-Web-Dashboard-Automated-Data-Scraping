@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Leaderboard - Bot Raffasya VII{% endblock %}
+{% block title %}Leaderboard - Bot Zenn' VII{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -14,18 +14,22 @@
                     <thead>
                         <tr>
                             <th>Rank</th>
-                            <th>User ID</th>
-                            <th>Poin Hijau</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for rank, (user_id, poin) in enumerate(leaderboard, 1) %}
-                        <tr>
-                            <td>{{ rank }}</td>
-                            <td>{{ user_id }}</td>
-                            <td>{{ poin }}</td>
-                        </tr>
-                        {% endfor %}
+                    <th>User ID</th>
+                    <th>XP</th>
+                    <th>Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_id, stats in leaderboard %}
+                <tr class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                    <td>
+                        {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+                    </td>
+                    <td>{{ user_id }}</td>
+                    <td>{{ stats.xp if stats is mapping else stats }}</td>
+                    <td>{{ (stats.xp if stats is mapping else stats) // 5 + 1 }}</td>
+                </tr>
+                {% endfor %}
                     </tbody>
                 </table>
             </div>
