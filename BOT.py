@@ -751,11 +751,7 @@ async def FungsiScraping(ctx):
 @bot.command()
 async def Halo(ctx):
     await ctx.send(f'Hi! Aku bot dari ciptaan kak Raffasya yaituu: {bot.user}!')
-
-@bot.command()
-async def Yoga(ctx):
-    await ctx.send(f'Woi lu goblok atau gimana sih? haha tolol lu')
-
+    
 @bot.command()
 async def Goodbye(ctx):
     await ctx.send("\U0001f642")
